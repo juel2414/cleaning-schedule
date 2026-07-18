@@ -77,8 +77,11 @@
   .tag.mentor{background:var(--amber-light);color:#7a5311;}
   .tag.mentee{background:var(--clay-light);color:#8a4321;}
   .tag.normal{background:#e7ebe3;color:#4d5546;}
+  .tag.worker{background:#e8e2f7;color:#4a3580;}
   .tag.m{background:#e2ecf7;color:#2a5583;}
   .tag.f{background:#fbe2ea;color:#93315a;}
+  .edit-row td{background:#f0f4ee;}
+  .edit-row input,.edit-row select{padding:4px 6px;font-size:12px;width:auto;}
   .empty{color:var(--muted);font-size:13px;padding:20px 0;text-align:center;}
   .board-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
   .board-title h2{margin:0;}
@@ -167,6 +170,9 @@ async function addPersonDB(p){
 }
 async function deletePersonDB(id){ await sb.from('people').delete().eq('id', id); }
 async function clearMentorRefDB(mentorId){ await sb.from('people').update({mentor_id:null}).eq('mentor_id', mentorId); }
+async function updatePersonDB(p){
+  await sb.from('people').update({ name:p.name, gender:p.gender, category:p.category, team:p.team, level:p.level, mentor_id:p.mentorId||null }).eq('id', p.id);
+}
 
 async function addAreaDB(a){
   const {data, error} = await sb.from('areas').insert({ name:a.name, capacity:a.capacity, difficulty:a.difficulty }).select().single();
@@ -200,7 +206,7 @@ function toast(msg){
 function personById(id){ return state.people.find(p=>p.id===id); }
 function areaById(id){ return state.areas.find(a=>a.id===id); }
 
-function catLabel(c){ return c==='mentor'?'멘토':c==='mentee'?'멘티':'일반'; }
+function catLabel(c){ return c==='mentor'?'멘토':c==='mentee'?'멘티':c==='worker'?'사역자':'일반'; }
 function genderLabel(g){ return g==='m'?'남':'여'; }
 
 // ---------- rendering ----------
@@ -233,10 +239,28 @@ function tabBtn(id,label){
 function setTab(id){ state.tab = id; render(); }
 
 // ---------- people tab ----------
+function catOptions(selected){
+  return ['normal','mentor','mentee','worker'].map(v=>`<option value="${v}" ${selected===v?'selected':''}>${catLabel(v)}</option>`).join('');
+}
 function renderPeopleTab(){
   const mentors = state.people.filter(p=>p.category==='mentor');
+  const editingId = state._editingPersonId || null;
   const rows = state.people.map(p=>{
     const mentorName = p.mentorId ? (personById(p.mentorId)?.name || '-') : '-';
+    if(editingId === p.id){
+      return `<tr class="edit-row" data-edit-id="${p.id}">
+        <td><input type="text" id="ep_name" value="${p.name}" style="width:80px"></td>
+        <td><select id="ep_gender"><option value="m" ${p.gender==='m'?'selected':''}>남</option><option value="f" ${p.gender==='f'?'selected':''}>여</option></select></td>
+        <td><select id="ep_category">${catOptions(p.category)}</select></td>
+        <td><input type="text" id="ep_team" value="${p.team||''}" style="width:70px"></td>
+        <td><input type="number" id="ep_level" value="${p.level}" min="1" max="5" style="width:50px"></td>
+        <td><select id="ep_mentor"><option value="">-</option>${mentors.filter(m=>m.id!==p.id).map(m=>`<option value="${m.id}" ${p.mentorId===m.id?'selected':''}>${m.name}</option>`).join('')}</select></td>
+        <td style="white-space:nowrap">
+          <button class="btn small" data-save-person="${p.id}">저장</button>
+          <button class="btn ghost small" data-cancel-edit>취소</button>
+        </td>
+      </tr>`;
+    }
     return `<tr>
       <td>${p.name}</td>
       <td><span class="tag ${p.gender}">${genderLabel(p.gender)}</span></td>
@@ -244,7 +268,10 @@ function renderPeopleTab(){
       <td>${p.team || '-'}</td>
       <td>Lv.${p.level}</td>
       <td>${p.category==='mentee' ? mentorName : '-'}</td>
-      <td><button class="btn ghost small" data-del-person="${p.id}">삭제</button></td>
+      <td style="white-space:nowrap">
+        <button class="btn ghost small" data-edit-person="${p.id}">수정</button>
+        <button class="btn ghost small danger" data-del-person="${p.id}">삭제</button>
+      </td>
     </tr>`;
   }).join('');
   return `
@@ -266,6 +293,7 @@ function renderPeopleTab(){
           <option value="normal">일반</option>
           <option value="mentor">멘토</option>
           <option value="mentee">멘티</option>
+          <option value="worker">사역자</option>
         </select></label>
         <label class="f">팀/부서<input type="text" id="p_team" placeholder="예: 1팀" style="width:90px"></label>
         <label class="f">레벨<input type="number" id="p_level" value="1" min="1" max="5" style="width:60px"></label>
@@ -548,6 +576,28 @@ function bindEvents(){
       render();
       toast('인원을 추가했어요.');
     };
+    document.querySelectorAll('[data-edit-person]').forEach(b=>{
+      b.onclick = ()=>{ state._editingPersonId = b.dataset.editPerson; render(); };
+    });
+    const cancelEdit = document.querySelector('[data-cancel-edit]');
+    if(cancelEdit) cancelEdit.onclick = ()=>{ state._editingPersonId = null; render(); };
+    document.querySelectorAll('[data-save-person]').forEach(b=>{
+      b.onclick = async ()=>{
+        const id = b.dataset.savePerson;
+        const p = state.people.find(x=>x.id===id);
+        if(!p) return;
+        p.name = document.getElementById('ep_name').value.trim() || p.name;
+        p.gender = document.getElementById('ep_gender').value;
+        p.category = document.getElementById('ep_category').value;
+        p.team = document.getElementById('ep_team').value.trim();
+        p.level = parseInt(document.getElementById('ep_level').value)||1;
+        p.mentorId = document.getElementById('ep_mentor').value || null;
+        await updatePersonDB(p);
+        state._editingPersonId = null;
+        render();
+        toast('수정했어요.');
+      };
+    });
     document.querySelectorAll('[data-del-person]').forEach(b=>{
       b.onclick = async ()=>{
         const id = b.dataset.delPerson;
