@@ -84,6 +84,7 @@
   .filter-tab[data-f="mentor"].active{background:var(--amber);border-color:var(--amber);color:#fff;}
   .filter-tab[data-f="mentee"].active{background:var(--clay);border-color:var(--clay);color:#fff;}
   .section-label{font-size:11px;font-weight:700;color:var(--muted);padding:10px 10px 4px;letter-spacing:0.5px;text-transform:uppercase;}
+  .gender-sublabel{font-size:11px;font-weight:600;color:var(--muted);padding:6px 18px 2px;opacity:0.7;}
   .section-mgr{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
   .section-mgr-label{font-size:11px;font-weight:700;color:var(--muted);margin-right:2px;}
   .section-chip{display:inline-flex;align-items:center;gap:3px;background:var(--surface);border:1.5px solid var(--line);border-radius:20px;padding:3px 10px 3px 12px;font-size:12px;}
@@ -413,29 +414,45 @@ function renderPeopleTab(){
     : f==='worker' ? state.people.filter(p=>p.category==='worker')
     : state.people.filter(p=>p.team===f&&p.category!=='worker');
 
+  // 성별 서브그룹 렌더링 헬퍼
+  function renderWithGender(group, trackIds){
+    let r = '';
+    const males = group.filter(p=>p.gender==='m');
+    const females = group.filter(p=>p.gender==='f');
+    if(males.length>0){
+      r += `<div class="gender-sublabel">🙋‍♂️ 남자 (${males.length}명)</div>`;
+      males.forEach(p=>{ if(trackIds) trackIds.add(p.id); r += renderPersonRow(p, false); });
+    }
+    if(females.length>0){
+      r += `<div class="gender-sublabel">🙋‍♀️ 여자 (${females.length}명)</div>`;
+      females.forEach(p=>{ if(trackIds) trackIds.add(p.id); r += renderPersonRow(p, false); });
+    }
+    return r;
+  }
+
   // 팀별 섹션 렌더링
   let rows = '';
   const usedIds = new Set();
   if(f==='all'){
     const workers = state.people.filter(p=>p.category==='worker');
     if(workers.length>0){
-      rows += `<div class="section-label">🔧 사역자</div>`;
-      workers.forEach(p=>{ usedIds.add(p.id); rows += renderPersonRow(p, false); });
+      rows += `<div class="section-label">🔧 사역자 (${workers.length}명)</div>`;
+      rows += renderWithGender(workers, usedIds);
     }
     state._sections.forEach(s=>{
       const group = state.people.filter(p=>p.team===s&&p.category!=='worker');
       if(group.length>0){
         rows += `<div class="section-label">📌 ${s} (${group.length}명)</div>`;
-        group.forEach(p=>{ usedIds.add(p.id); rows += renderPersonRow(p, false); });
+        rows += renderWithGender(group, usedIds);
       }
     });
     const etc = state.people.filter(p=>!usedIds.has(p.id));
     if(etc.length>0){
-      rows += `<div class="section-label">👤 기타</div>`;
-      etc.forEach(p=>{ rows += renderPersonRow(p, false); });
+      rows += `<div class="section-label">👤 기타 (${etc.length}명)</div>`;
+      rows += renderWithGender(etc, null);
     }
   } else {
-    visible.forEach(p=>{ rows += renderPersonRow(p, false); });
+    rows += renderWithGender(visible, null);
   }
 
   const allChecked = state.people.length>0 && state.people.every(p=>sel.has(p.id));
