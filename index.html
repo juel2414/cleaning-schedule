@@ -1099,24 +1099,38 @@ async function handleRosterImage(file){
       body: JSON.stringify({ base64, mediaType })
     });
     const data = await response.json();
-    let names = Array.isArray(data.names) ? data.names : [];
-    if(!Array.isArray(names) || names.length===0){
+    // people 배열 우선, 없으면 names 배열 fallback
+    let people = Array.isArray(data.people) && data.people.length > 0
+      ? data.people
+      : (Array.isArray(data.names) ? data.names.map(n=>({name:n,gender:'m',category:'normal'})) : []);
+    people = people.filter(p=>p.name && p.name.trim().length >= 2);
+    if(people.length===0){
       statusEl.textContent = '이름을 인식하지 못했어요. 직접 입력해주세요.';
       return;
     }
-    const uniqueNames = [...new Set(names.map(n=>typeof n==='string'?n.trim():'').filter(Boolean))];
-    const duplicates = uniqueNames.filter(name=>state.people.some(p=>p.name===name));
-    const toAdd = uniqueNames.filter(name=>!state.people.some(p=>p.name===name));
-    for(const name of toAdd){
-      const person = { name, gender:'m', category:'normal', team:'', level:1, mentorId:null, age:null };
+    // 중복 제거 (같은 이름 이미 있으면 건너뜀)
+    const seen = new Set();
+    const toAdd = people.filter(p=>{
+      const name = p.name.trim();
+      if(seen.has(name)) return false;
+      seen.add(name);
+      return !state.people.some(x=>x.name===name);
+    });
+    const duplicates = people.filter(p=>state.people.some(x=>x.name===p.name.trim())).map(p=>p.name.trim());
+    for(const p of toAdd){
+      const person = {
+        name: p.name.trim(),
+        gender: p.gender==='f' ? 'f' : 'm',
+        category: ['worker','mentor','mentee','normal'].includes(p.category) ? p.category : 'normal',
+        team:'', level:1, mentorId:null, age:null
+      };
       await addPersonDB(person);
       state.people.push(person);
     }
     let msg = '';
-    if(toAdd.length>0) msg += `${toAdd.length}명 추가 완료. `;
+    if(toAdd.length>0) msg += `${toAdd.length}명 추가 완료 (성별·카테고리 자동 인식). `;
     if(duplicates.length>0) msg += `중복 ${duplicates.length}명 건너뜀 (${duplicates.join(', ')}). `;
     if(toAdd.length===0 && duplicates.length===0) msg = '이름을 인식하지 못했어요. 직접 입력해주세요.';
-    else if(toAdd.length>0) msg += '성별·카테고리·레벨을 확인해주세요.';
     statusEl.textContent = msg;
     render();
   }catch(e){
