@@ -369,6 +369,7 @@ function renderPeopleTab(){
   const f = state._peopleFilter;
   const sel = state._selectedPeople;
 
+  const mentors = state.people.filter(p=>p.category==='mentor');
   const counts = { all: state.people.length, worker: state.people.filter(p=>p.category==='worker').length };
   state._sections.forEach(s=>{ counts[s] = state.people.filter(p=>p.team===s&&p.category!=='worker').length; });
 
