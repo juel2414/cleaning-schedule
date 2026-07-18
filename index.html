@@ -175,7 +175,7 @@ const state = {
 };
 
 function dbPersonToState(p){
-  return { id:p.id, name:p.name, gender:p.gender, category:p.category, team:p.team||'', level:p.level, mentorId:p.mentor_id };
+  return { id:p.id, name:p.name, gender:p.gender, category:p.category, team:p.team||'', level:p.level, mentorId:p.mentor_id, age:p.age||null };
 }
 function dbAreaToState(a){
   return { id:a.id, name:a.name, capacity:a.capacity, difficulty:a.difficulty };
@@ -206,14 +206,14 @@ async function loadAll(){
 
 async function addPersonDB(p){
   const {data, error} = await sb.from('people').insert({
-    name:p.name, gender:p.gender, category:p.category, team:p.team, level:p.level, mentor_id:p.mentorId
+    name:p.name, gender:p.gender, category:p.category, team:p.team, level:p.level, mentor_id:p.mentorId, age:p.age||null
   }).select().single();
   if(!error && data) p.id = data.id;
 }
 async function deletePersonDB(id){ await sb.from('people').delete().eq('id', id); }
 async function clearMentorRefDB(mentorId){ await sb.from('people').update({mentor_id:null}).eq('mentor_id', mentorId); }
 async function updatePersonDB(p){
-  await sb.from('people').update({ name:p.name, gender:p.gender, category:p.category, team:p.team, level:p.level, mentor_id:p.mentorId||null }).eq('id', p.id);
+  await sb.from('people').update({ name:p.name, gender:p.gender, category:p.category, team:p.team, level:p.level, mentor_id:p.mentorId||null, age:p.age||null }).eq('id', p.id);
 }
 
 async function addAreaDB(a){
@@ -298,7 +298,7 @@ function renderPersonRow(p, isMentee){
     <option value="">-</option>
     ${mentors.filter(m=>m.id!==p.id).map(m=>`<option value="${m.id}" ${p.mentorId===m.id?'selected':''}>${m.name}</option>`).join('')}
   </select>`;
-  return `<div class="${rowClass}" data-pid="${p.id}">
+  return `<div class="${rowClass}" data-pid="${p.id}" style="grid-template-columns:28px 1fr auto auto auto auto auto auto;">
     <input type="checkbox" class="p-check" data-id="${p.id}" ${sel?'checked':''} style="cursor:pointer;width:15px;height:15px;">
     <span class="prow-name">
       ${isMentee?'<span class="mentee-indent">└</span>':''}
@@ -316,6 +316,9 @@ function renderPersonRow(p, isMentee){
     </span>
     <span class="editable-cell" data-toggle="level" data-id="${p.id}" title="클릭해서 수정">
       <span style="font-size:12px;font-weight:700;color:var(--moss-dark);">Lv.${p.level}</span><span class="edit-hint">✎</span>
+    </span>
+    <span class="editable-cell" data-toggle="age" data-id="${p.id}" title="클릭해서 수정">
+      <span style="font-size:12px;color:${p.age?'var(--ink)':'var(--muted)'};">${p.age?p.age+'세':'-'}</span><span class="edit-hint">✎</span>
     </span>
     ${p.category==='mentee'||p.category==='normal'||p.category==='worker' ? mentorSel : '<span style="font-size:12px;color:var(--muted);">-</span>'}
     <button class="btn ghost small danger" data-del-person="${p.id}" style="padding:3px 8px;font-size:11px;">삭제</button>
@@ -356,6 +359,7 @@ function renderPeopleTab(){
       <select id="bulk_category"><option value="">카테고리 변경...</option><option value="normal">일반</option><option value="mentor">멘토</option><option value="mentee">멘티</option><option value="worker">사역자</option></select>
       <input type="text" id="bulk_team" placeholder="팀 일괄 변경..." style="width:120px;">
       <input type="number" id="bulk_level" placeholder="레벨" min="1" max="5" style="width:70px;">
+      <input type="number" id="bulk_age" placeholder="나이" min="1" max="120" style="width:70px;">
       <button class="btn small" id="bulkApplyBtn" style="background:#fff;color:var(--moss-dark);border-color:#fff;">일괄 적용</button>
       <button class="btn ghost small" id="bulkCancelBtn" style="color:#fff;border-color:rgba(255,255,255,0.4);">취소</button>
     </div>` : '';
@@ -379,6 +383,7 @@ function renderPeopleTab(){
         </select></label>
         <label class="f">팀<input type="text" id="p_team" placeholder="예: 1팀" style="width:80px"></label>
         <label class="f">레벨<input type="number" id="p_level" value="1" min="1" max="5" style="width:55px"></label>
+        <label class="f">나이<input type="number" id="p_age" placeholder="나이" min="1" max="120" style="width:60px"></label>
         <label class="f" id="mentorPickWrap" style="display:none">담당 멘토<select id="p_mentor"><option value="">선택</option>${mentors.map(m=>`<option value="${m.id}">${m.name}</option>`).join('')}</select></label>
         <button class="btn" id="addPersonBtn" style="align-self:flex-end">추가</button>
       </div>
@@ -391,8 +396,8 @@ function renderPeopleTab(){
         </label>`:''}
       </div>
       ${state.people.length===0?'<div class="empty">아직 등록된 인원이 없어요.</div>':`
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 10px;display:grid;grid-template-columns:28px 1fr auto auto auto auto auto;gap:8px;">
-        <span></span><span>이름</span><span>성별</span><span>카테고리</span><span>팀</span><span>레벨</span><span>담당멘토</span><span></span>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 10px;display:grid;grid-template-columns:28px 1fr auto auto auto auto auto auto;gap:8px;">
+        <span></span><span>이름</span><span>성별</span><span>카테고리</span><span>팀</span><span>레벨</span><span>나이</span><span>담당멘토</span><span></span>
       </div>
       <div id="peopleList">${rows}</div>`}
     </div>
@@ -657,7 +662,9 @@ function bindEvents(){
       const team = document.getElementById('p_team').value.trim();
       const level = parseInt(document.getElementById('p_level').value)||1;
       const mentorId = category==='mentee' ? (document.getElementById('p_mentor').value || null) : null;
-      const person = { name, gender, category, team, level, mentorId };
+      const ageVal = document.getElementById('p_age').value;
+      const age = ageVal ? parseInt(ageVal) : null;
+      const person = { name, gender, category, team, level, mentorId, age };
       await addPersonDB(person);
       state.people.push(person);
       render();
@@ -729,6 +736,15 @@ function bindEvents(){
           pop.querySelectorAll('button').forEach(b=>b.onclick=async()=>{
             p.level=parseInt(b.dataset.val); await updatePersonDB(p); pop.remove(); render();
           });
+        } else if(type==='age'){
+          pop.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:4px;">나이</div>
+            <input type="number" value="${p.age||''}" placeholder="나이" min="1" max="120" style="width:80px;font-size:13px;padding:5px 7px;border:1px solid var(--line);border-radius:5px;">
+            <button class="btn small" style="margin-top:6px;width:100%;">저장</button>`;
+          const inp = pop.querySelector('input');
+          pop.querySelector('button').onclick = async()=>{
+            p.age = inp.value ? parseInt(inp.value) : null; await updatePersonDB(p); pop.remove(); render();
+          };
+          setTimeout(()=>inp.focus(),50);
         }
         cell.style.position='relative';
         cell.appendChild(pop);
@@ -772,12 +788,15 @@ function bindEvents(){
         const team = document.getElementById('bulk_team').value.trim();
         const levelRaw = document.getElementById('bulk_level').value;
         const level = levelRaw ? parseInt(levelRaw) : null;
+        const ageRaw = document.getElementById('bulk_age').value;
+        const age = ageRaw ? parseInt(ageRaw) : null;
         const targets = state.people.filter(p=>state._selectedPeople.has(p.id));
         for(const p of targets){
           if(gender) p.gender=gender;
           if(category) p.category=category;
           if(team) p.team=team;
           if(level) p.level=level;
+          if(age) p.age=age;
           await updatePersonDB(p);
         }
         state._selectedPeople.clear();
