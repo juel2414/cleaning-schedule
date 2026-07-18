@@ -675,6 +675,7 @@ async function handleRosterImage(file){
       logger: m => { if(m.status === 'recognizing text') statusEl.textContent = `분석 중... ${Math.round(m.progress*100)}%`; }
     });
     URL.revokeObjectURL(imageUrl);
+    console.log('Tesseract raw text:', result.data.text);
     const lines = result.data.text.split('\n').map(s => s.trim()).filter(s => s.length >= 2 && s.length <= 10 && /[가-힣]/.test(s));
     let names = [...new Set(lines)];
     if(!Array.isArray(names) || names.length===0){
