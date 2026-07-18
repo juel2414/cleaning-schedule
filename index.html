@@ -508,8 +508,10 @@ function renderPeopleTab(){
         <img src="./images/누끼/DSC02220-Photoroom.png" alt="" style="height:130px;width:auto;display:block;flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.12));margin-bottom:-18px;align-self:flex-end;">
       </div>
     </div>
-    <div class="card">
-      <h2>인원 추가</h2>
+    <div class="card" style="overflow:hidden;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+        <div style="flex:1;min-width:0;">
+          <h2>인원 추가</h2>
       <div class="row">
         <label class="f">이름<input type="text" id="p_name" placeholder="이름"></label>
         <label class="f">성별<select id="p_gender"><option value="m">남</option><option value="f">여</option></select></label>
@@ -523,15 +525,18 @@ function renderPeopleTab(){
         <label class="f" id="mentorPickWrap" style="display:none">담당 멘토<select id="p_mentor"><option value="">선택</option>${mentors.map(m=>`<option value="${m.id}">${m.name}</option>`).join('')}</select></label>
         <button class="btn" id="addPersonBtn" style="align-self:flex-end">추가</button>
       </div>
+        </div>
+        <img src="./images/누끼/주님한분1-Photoroom.png" alt="" style="height:120px;width:auto;display:block;flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.12));margin-bottom:-18px;align-self:flex-end;">
+      </div>
     </div>
     <div class="card" style="padding-bottom:${sel.size>0?'60px':'18px'}">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <h2 style="margin:0">등록된 인원 (${state.people.length}명)</h2>
         ${state.people.length>0?`
         <div style="display:flex;align-items:flex-end;gap:6px;">
-          <img class="nukki-deco" src="./images/누끼/주님한분2-Photoroom.png" alt="">
+          <img class="nukki-deco" src="./images/누끼/주님한분3-Photoroom.png" alt="">
           <div class="nukki-select-btn${allChecked?' all-selected':''}" id="nukkiFab">
-            <img src="./images/누끼/주님한분1-Photoroom.png" alt="전체 선택">
+            <img src="./images/누끼/주님한분2-Photoroom.png" alt="전체 선택">
             <span class="sel-label">${allChecked?'선택 해제':'전체 선택'}</span>
           </div>
         </div>`:''}
