@@ -540,7 +540,10 @@ function renderPeopleTab(){
           </div>
         </div>`:''}
       </div>
-      ${state.people.length===0?'<div class="empty">아직 등록된 인원이 없어요.</div>':`
+      ${state.people.length===0?`<div class="empty" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 0;">
+        <img src="./images/누끼/S3_01026-Photoroom.png" alt="" style="height:100px;width:auto;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.1));">
+        <span>아직 등록된 인원이 없어요.</span>
+      </div>`:`
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 10px;display:grid;grid-template-columns:28px 1fr auto auto auto auto auto auto auto;gap:8px;">
         <span></span><span>이름</span><span>성별</span><span>카테고리</span><span>팀</span><span>레벨</span><span>나이</span><span>담당멘토</span><span></span>
       </div>
