@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>청소 당번표 관리</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#4a6b4f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="청소당번표">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" href="./icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+  :root{
+    --ink:#2f3b30;
+    --paper:#f6f3ea;
+    --card:#ffffff;
+    --line:#dcd6c4;
+    --moss:#4a6b4f;
+    --moss-dark:#33502f;
+    --clay:#c1683f;
+    --clay-light:#f1ded1;
+    --amber:#c98a2c;
+    --amber-light:#f7e9cf;
+    --danger:#b5453a;
+    --danger-light:#f6dfdb;
+    --muted:#7c8172;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Apple SD Gothic Neo','Malgun Gothic','Pretendard',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:960px;margin:0 auto;padding:0 0 80px;}
+  .hero{
+    width:100%;height:220px;position:relative;overflow:hidden;
+    border-radius:0 0 20px 20px;margin-bottom:24px;
+  }
+  .hero img{
+    width:100%;height:100%;object-fit:cover;object-position:center 20%;
+    display:block;
+  }
+  .hero::after{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(to bottom, rgba(10,20,40,0.15) 0%, rgba(10,20,40,0.55) 100%);
+  }
+  .hero-text{
+    position:absolute;bottom:20px;left:24px;z-index:1;color:#fff;
+  }
+  .hero-text .brand{font-size:24px;font-weight:800;letter-spacing:-0.5px;text-shadow:0 1px 6px rgba(0,0,0,0.4);}
+  .hero-text .sub{font-size:12.5px;opacity:0.88;margin-top:2px;text-shadow:0 1px 4px rgba(0,0,0,0.3);}
+  .app-inner{padding:0 20px;}
+  .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px;}
+  .brand{font-size:22px;font-weight:700;letter-spacing:-0.3px;}
+  .brand span{color:var(--moss);}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:20px;}
+  nav{display:flex;gap:6px;margin-bottom:22px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:0;}
+  nav button{
+    background:none;border:none;padding:10px 14px;font-size:14px;font-weight:600;color:var(--muted);
+    cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;
+  }
+  nav button.active{color:var(--moss-dark);border-bottom-color:var(--moss);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:16px;}
+  .card h2{font-size:16px;margin:0 0 4px;}
+  .card .desc{font-size:12.5px;color:var(--muted);margin:0 0 14px;}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  input[type=text],input[type=number],select{
+    border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:13.5px;
+    background:#fdfcf8;color:var(--ink);font-family:inherit;
+  }
+  input:focus,select:focus{outline:2px solid var(--moss);outline-offset:1px;}
+  label.f{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--muted);font-weight:600;}
+  button.btn{
+    border:1px solid var(--moss);background:var(--moss);color:#fff;padding:9px 16px;
+    border-radius:6px;font-size:13.5px;font-weight:600;cursor:pointer;
+  }
+  button.btn:hover{background:var(--moss-dark);}
+  button.btn.ghost{background:none;color:var(--moss-dark);}
+  button.btn.ghost:hover{background:#eef2ea;}
+  button.btn.danger{background:var(--danger);border-color:var(--danger);}
+  button.btn.danger:hover{background:#93362d;}
+  button.btn.small{padding:5px 10px;font-size:12px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);}
+  th{color:var(--muted);font-weight:600;font-size:12px;}
+  .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;}
+  .tag.mentor{background:var(--amber-light);color:#7a5311;}
+  .tag.mentee{background:var(--clay-light);color:#8a4321;}
+  .tag.normal{background:#e7ebe3;color:#4d5546;}
+  .tag.worker{background:#e8e2f7;color:#4a3580;}
+  .tag.m{background:#e2ecf7;color:#2a5583;}
+  .tag.f{background:#fbe2ea;color:#93315a;}
+  .edit-row td{background:#f0f4ee;}
+  .edit-row input,.edit-row select{padding:4px 6px;font-size:12px;width:auto;}
+  .empty{color:var(--muted);font-size:13px;padding:20px 0;text-align:center;}
+  .board-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .board-title h2{margin:0;}
+  #captureArea{background:#fffefb;padding:24px;border-radius:10px;border:1px solid var(--line);}
+  .zone{border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:10px;background:#fbfaf5;}
+  .zone-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .zone-name{font-weight:700;font-size:14.5px;}
+  .zone-meta{font-size:11.5px;color:var(--muted);}
+  .zone-people{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip{
+    background:#eef1e9;border:1px solid var(--line);border-radius:20px;padding:5px 12px;font-size:12.5px;
+    display:flex;align-items:center;gap:6px;
+  }
+  .chip button{border:none;background:none;color:var(--danger);cursor:pointer;font-size:13px;padding:0;line-height:1;}
+  .warn-badge{background:var(--danger-light);color:var(--danger);font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700;}
+  .add-select{display:flex;gap:6px;margin-top:8px;}
+  .status-pill{padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;}
+  .status-pill.draft{background:var(--amber-light);color:#7a5311;}
+  .status-pill.confirmed{background:#deefe0;color:var(--moss-dark);}
+  .history-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer;}
+  .history-item:hover{background:#f9f7ef;}
+  .upload-box{border:2px dashed var(--line);border-radius:10px;padding:26px;text-align:center;color:var(--muted);cursor:pointer;font-size:13px;}
+  .upload-box:hover{border-color:var(--moss);}
+  .note{background:var(--amber-light);color:#7a5311;border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:12px;}
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--moss-dark);color:#fff;
+    padding:10px 18px;border-radius:8px;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,0.15);z-index:50;
+  }
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr;}}
+  .month-label{font-family:'Georgia',serif;font-size:20px;font-weight:700;color:var(--moss-dark);}
+</style>
+</head>
+<body>
+<div class="app" id="root"></div>
+
+<script>
+const SUPABASE_URL = 'https://pvuriqyiyghjuprewkwj.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dXJpcXlpeWdoanVwcmV3a3dqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTE1NzQsImV4cCI6MjA5OTg4NzU3NH0.Rr4YX-OcacHSsgn-dSmuW7pvSGuDouWfPVV1_p8KAb4';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const state = {
+  people: [],
+  areas: [],
+  history: [],
+  draft: null,
+  tab: 'people',
+  loaded: false
+};
+
+function dbPersonToState(p){
+  return { id:p.id, name:p.name, gender:p.gender, category:p.category, team:p.team||'', level:p.level, mentorId:p.mentor_id };
+}
+function dbAreaToState(a){
+  return { id:a.id, name:a.name, capacity:a.capacity, difficulty:a.difficulty };
+}
+function dbScheduleToState(s){
+  return { id:s.id, month:s.month, assignments:s.assignments||{}, status:s.status, notes:s.notes||[], createdAt: new Date(s.created_at).getTime() };
+}
+
+async function loadAll(){
+  try{
+    const [{data:people}, {data:areas}, {data:schedules}] = await Promise.all([
+      sb.from('people').select('*').order('created_at', {ascending:true}),
+      sb.from('areas').select('*').order('created_at', {ascending:true}),
+      sb.from('schedules').select('*').order('created_at', {ascending:true})
+    ]);
+    state.people = (people||[]).map(dbPersonToState);
+    state.areas = (areas||[]).map(dbAreaToState);
+    const allSchedules = (schedules||[]).map(dbScheduleToState);
+    state.history = allSchedules.filter(s=>s.status==='confirmed');
+    const draft = allSchedules.find(s=>s.status==='draft');
+    state.draft = draft || null;
+  }catch(e){
+    toast('Supabase 연결에 문제가 있어요.');
+  }
+  state.loaded = true;
+  render();
+}
+
+async function addPersonDB(p){
+  const {data, error} = await sb.from('people').insert({
+    name:p.name, gender:p.gender, category:p.category, team:p.team, level:p.level, mentor_id:p.mentorId
+  }).select().single();
+  if(!error && data) p.id = data.id;
+}
+async function deletePersonDB(id){ await sb.from('people').delete().eq('id', id); }
+async function clearMentorRefDB(mentorId){ await sb.from('people').update({mentor_id:null}).eq('mentor_id', mentorId); }
+async function updatePersonDB(p){
+  await sb.from('people').update({ name:p.name, gender:p.gender, category:p.category, team:p.team, level:p.level, mentor_id:p.mentorId||null }).eq('id', p.id);
+}
+
+async function addAreaDB(a){
+  const {data, error} = await sb.from('areas').insert({ name:a.name, capacity:a.capacity, difficulty:a.difficulty }).select().single();
+  if(!error && data) a.id = data.id;
+}
+async function deleteAreaDB(id){ await sb.from('areas').delete().eq('id', id); }
+
+async function createDraftDB(draft){
+  const {data, error} = await sb.from('schedules').insert({
+    month:draft.month, assignments:draft.assignments, status:'draft', notes:draft.notes
+  }).select().single();
+  if(!error && data) draft.id = data.id;
+}
+async function updateDraftDB(){
+  if(!state.draft) return;
+  await sb.from('schedules').update({ assignments:state.draft.assignments, notes:state.draft.notes }).eq('id', state.draft.id);
+}
+async function confirmDraftDB(){
+  await sb.from('schedules').update({ status:'confirmed' }).eq('id', state.draft.id);
+}
+async function deleteDraftDB(id){ await sb.from('schedules').delete().eq('id', id); }
+
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function toast(msg){
+  const t = document.createElement('div');
+  t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2200);
+}
+
+function personById(id){ return state.people.find(p=>p.id===id); }
+function areaById(id){ return state.areas.find(a=>a.id===id); }
+
+function catLabel(c){ return c==='mentor'?'멘토':c==='mentee'?'멘티':c==='worker'?'사역자':'일반'; }
+function genderLabel(g){ return g==='m'?'남':'여'; }
+
+// ---------- rendering ----------
+function render(){
+  const root = document.getElementById('root');
+  if(!state.loaded){ root.innerHTML = '<div class="empty">불러오는 중...</div>'; return; }
+  root.innerHTML = `
+    <div class="hero">
+      <img src="./images/IMG_7110.JPG" alt="청소 당번표">
+      <div class="hero-text">
+        <div class="brand">청소 당번표 관리</div>
+        <div class="sub">인원과 구역을 등록하면 조건에 맞춰 매달 배정표를 자동으로 만들어드려요.</div>
+      </div>
+    </div>
+    <div class="app-inner">
+    <nav>
+      ${tabBtn('people','인원 관리')}
+      ${tabBtn('areas','구역 관리')}
+      ${tabBtn('generate','이번 달 배정')}
+      ${tabBtn('history','이력')}
+    </nav>
+    <div id="tabBody"></div>
+    </div>
+  `;
+  const body = document.getElementById('tabBody');
+  if(state.tab==='people') body.innerHTML = renderPeopleTab();
+  if(state.tab==='areas') body.innerHTML = renderAreasTab();
+  if(state.tab==='generate') body.innerHTML = renderGenerateTab();
+  if(state.tab==='history') body.innerHTML = renderHistoryTab();
+  bindEvents();
+}
+function tabBtn(id,label){
+  return `<button class="${state.tab===id?'active':''}" data-tab="${id}">${label}</button>`;
+}
+function setTab(id){ state.tab = id; render(); }
+
+// ---------- people tab ----------
+function catOptions(selected){
+  return ['normal','mentor','mentee','worker'].map(v=>`<option value="${v}" ${selected===v?'selected':''}>${catLabel(v)}</option>`).join('');
+}
+function renderPeopleTab(){
+  const mentors = state.people.filter(p=>p.category==='mentor');
+  const editingId = state._editingPersonId || null;
+  const rows = state.people.map(p=>{
+    const mentorName = p.mentorId ? (personById(p.mentorId)?.name || '-') : '-';
+    if(editingId === p.id){
+      return `<tr class="edit-row" data-edit-id="${p.id}">
+        <td><input type="text" id="ep_name" value="${p.name}" style="width:80px"></td>
+        <td><select id="ep_gender"><option value="m" ${p.gender==='m'?'selected':''}>남</option><option value="f" ${p.gender==='f'?'selected':''}>여</option></select></td>
+        <td><select id="ep_category">${catOptions(p.category)}</select></td>
+        <td><input type="text" id="ep_team" value="${p.team||''}" style="width:70px"></td>
+        <td><input type="number" id="ep_level" value="${p.level}" min="1" max="5" style="width:50px"></td>
+        <td><select id="ep_mentor"><option value="">-</option>${mentors.filter(m=>m.id!==p.id).map(m=>`<option value="${m.id}" ${p.mentorId===m.id?'selected':''}>${m.name}</option>`).join('')}</select></td>
+        <td style="white-space:nowrap">
+          <button class="btn small" data-save-person="${p.id}">저장</button>
+          <button class="btn ghost small" data-cancel-edit>취소</button>
+        </td>
+      </tr>`;
+    }
+    return `<tr>
+      <td>${p.name}</td>
+      <td><span class="tag ${p.gender}">${genderLabel(p.gender)}</span></td>
+      <td><span class="tag ${p.category}">${catLabel(p.category)}</span></td>
+      <td>${p.team || '-'}</td>
+      <td>Lv.${p.level}</td>
+      <td>${p.category==='mentee' ? mentorName : '-'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn ghost small" data-edit-person="${p.id}">수정</button>
+        <button class="btn ghost small danger" data-del-person="${p.id}">삭제</button>
+      </td>
+    </tr>`;
+  }).join('');
+  return `
+    <div class="card">
+      <h2>명렬표 이미지로 불러오기</h2>
+      <p class="desc">인원 명단이 담긴 이미지를 올리면 이름을 자동으로 추출해서 초안으로 등록해드려요. 이후 성별·카테고리·레벨은 직접 채워주세요.</p>
+      <div class="upload-box" id="uploadBox">이미지를 클릭해서 선택하거나 드래그해서 놓아주세요<br><span style="font-size:11px">JPG, PNG 지원</span></div>
+      <input type="file" id="fileInput" accept="image/*" style="display:none">
+      <div id="uploadStatus" style="font-size:12.5px;color:var(--muted);margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>인원 추가</h2>
+      <p class="desc">이름, 성별, 카테고리, 팀, 레벨(구역 난이도와 매칭)을 입력해주세요.</p>
+      <div class="row">
+        <label class="f">이름<input type="text" id="p_name" placeholder="이름"></label>
+        <label class="f">성별<select id="p_gender"><option value="m">남</option><option value="f">여</option></select></label>
+        <label class="f">카테고리<select id="p_category">
+          <option value="normal">일반</option>
+          <option value="mentor">멘토</option>
+          <option value="mentee">멘티</option>
+          <option value="worker">사역자</option>
+        </select></label>
+        <label class="f">팀/부서<input type="text" id="p_team" placeholder="예: 1팀" style="width:90px"></label>
+        <label class="f">레벨<input type="number" id="p_level" value="1" min="1" max="5" style="width:60px"></label>
+        <label class="f" id="mentorPickWrap" style="display:none">담당 멘토<select id="p_mentor"><option value="">선택</option>${mentors.map(m=>`<option value="${m.id}">${m.name}</option>`).join('')}</select></label>
+        <button class="btn" id="addPersonBtn" style="align-self:flex-end">추가</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>등록된 인원 (${state.people.length}명)</h2>
+      ${state.people.length===0 ? '<div class="empty">아직 등록된 인원이 없어요.</div>' : `
+      <table>
+        <thead><tr><th>이름</th><th>성별</th><th>카테고리</th><th>팀</th><th>레벨</th><th>담당 멘토</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`}
+    </div>
+  `;
+}
+
+// ---------- areas tab ----------
+function renderAreasTab(){
+  const rows = state.areas.map(a=>`
+    <tr>
+      <td>${a.name}</td>
+      <td>${a.capacity}명</td>
+      <td>난이도 ${a.difficulty}</td>
+      <td><button class="btn ghost small" data-del-area="${a.id}">삭제</button></td>
+    </tr>`).join('');
+  return `
+    <div class="card">
+      <h2>구역 추가</h2>
+      <p class="desc">구역별 필요 인원수와 난이도를 정해주세요. 난이도가 높을수록 레벨이 높은 인원이 배정돼요.</p>
+      <div class="row">
+        <label class="f">구역명<input type="text" id="a_name" placeholder="예: 화장실"></label>
+        <label class="f">필요 인원<input type="number" id="a_capacity" value="1" min="1" style="width:70px"></label>
+        <label class="f">난이도<input type="number" id="a_difficulty" value="1" min="1" max="5" style="width:70px"></label>
+        <button class="btn" id="addAreaBtn" style="align-self:flex-end">추가</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>등록된 구역 (${state.areas.length}곳)</h2>
+      ${state.areas.length===0 ? '<div class="empty">아직 등록된 구역이 없어요.</div>' : `
+      <table>
+        <thead><tr><th>구역명</th><th>필요 인원</th><th>난이도</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`}
+    </div>
+  `;
+}
+
+// ---------- generate tab ----------
+function renderGenerateTab(){
+  if(!state.draft){
+    const ready = state.people.length>0 && state.areas.length>0;
+    return `
+      <div class="card">
+        <h2>이번 달 배정표 만들기</h2>
+        <p class="desc">등록된 인원과 구역을 바탕으로 조건에 맞는 초안을 자동으로 생성해요. 생성 후에는 자유롭게 수정할 수 있어요.</p>
+        ${!ready ? '<div class="note">인원과 구역을 먼저 등록해주세요.</div>' : ''}
+        <button class="btn" id="genDraftBtn" ${ready?'':'disabled'}>초안 생성하기</button>
+      </div>
+    `;
+  }
+  return renderDraftBoard(state.draft, true);
+}
+
+function renderDraftBoard(entry, editable){
+  const monthStr = entry.month;
+  const zonesHtml = state.areas.map(area=>{
+    const assigned = entry.assignments[area.id] || [];
+    const warn = assigned.length !== area.capacity;
+    const peopleChips = assigned.map(pid=>{
+      const p = personById(pid);
+      if(!p) return '';
+      return `<span class="chip">${p.name} <span class="tag ${p.category}" style="padding:1px 6px;font-size:10px;">${catLabel(p.category)}</span> ${editable?`<button data-remove-assign="${area.id}|${pid}">✕</button>`:''}</span>`;
+    }).join('');
+    const availablePeople = state.people.filter(p=>!Object.values(entry.assignments).flat().includes(p.id));
+    return `
+      <div class="zone">
+        <div class="zone-head">
+          <div>
+            <span class="zone-name">${area.name}</span>
+            <span class="zone-meta"> · 필요 ${area.capacity}명 · 난이도 ${area.difficulty}</span>
+          </div>
+          ${warn?`<span class="warn-badge">인원 ${assigned.length}/${area.capacity}</span>`:''}
+        </div>
+        <div class="zone-people">${peopleChips || '<span class="empty" style="padding:0;">배정된 인원 없음</span>'}</div>
+        ${editable?`
+        <div class="add-select">
+          <select data-add-to="${area.id}">
+            <option value="">인원 추가...</option>
+            ${availablePeople.map(p=>`<option value="${p.id}">${p.name} (${catLabel(p.category)}·Lv${p.level})</option>`).join('')}
+          </select>
+        </div>`:''}
+      </div>
+    `;
+  }).join('');
+
+  const unassigned = state.people.filter(p=>!Object.values(entry.assignments).flat().includes(p.id));
+
+  return `
+    <div class="card">
+      <div class="board-title">
+        <div>
+          <div class="month-label">${monthStr}</div>
+          <span class="status-pill ${entry.status}">${entry.status==='draft'?'초안':'확정'}</span>
+        </div>
+        <div class="row">
+          ${editable && entry.status==='draft' ? `<button class="btn ghost" id="regenBtn">다시 생성</button><button class="btn" id="confirmBtn">확정 저장</button>` : ''}
+          <button class="btn ghost" id="exportImgBtn">이미지로 저장</button>
+        </div>
+      </div>
+      ${entry.notes && entry.notes.length ? `<div class="note">${entry.notes.join('<br>')}</div>` : ''}
+      <div id="captureArea">
+        <div style="font-weight:700;font-size:16px;margin-bottom:14px;">${monthStr} 청소 당번표</div>
+        ${zonesHtml}
+        ${unassigned.length ? `<div class="zone" style="border-style:dashed;"><div class="zone-name" style="margin-bottom:6px;">미배정 인원</div><div class="zone-people">${unassigned.map(p=>`<span class="chip">${p.name}</span>`).join('')}</div></div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+// ---------- history tab ----------
+function renderHistoryTab(){
+  if(state.history.length===0) return '<div class="card"><div class="empty">아직 확정된 배정표 이력이 없어요.</div></div>';
+  const items = [...state.history].reverse().map(h=>`
+    <div class="history-item" data-view-history="${h.id}">
+      <div><strong>${h.month}</strong> <span class="status-pill ${h.status}" style="margin-left:8px;">확정</span></div>
+      <span style="color:var(--muted);font-size:12px;">${Object.values(h.assignments).flat().length}명 배정</span>
+    </div>
+  `).join('');
+  return `<div class="card"><h2>지난 배정표</h2>${items}</div>
+    <div id="historyDetail"></div>`;
+}
+
+// ---------- assignment algorithm ----------
+function currentMonthLabel(){
+  const now = new Date();
+  return `${now.getFullYear()}년 ${now.getMonth()+1}월`;
+}
+
+function buildUnits(){
+  const mentees = state.people.filter(p=>p.category==='mentee');
+  const mentors = state.people.filter(p=>p.category==='mentor');
+  const used = new Set();
+  const units = [];
+  mentors.forEach(m=>{
+    const myMentees = mentees.filter(me=>me.mentorId===m.id);
+    const members = [m, ...myMentees];
+    members.forEach(mm=>used.add(mm.id));
+    units.push({
+      id: uid(),
+      members,
+      gender: m.gender,
+      level: Math.max(...members.map(x=>x.level)),
+      teams: [...new Set(members.map(x=>x.team||''))]
+    });
+  });
+  state.people.forEach(p=>{
+    if(used.has(p.id)) return;
+    units.push({ id: uid(), members:[p], gender:p.gender, level:p.level, teams:[p.team||''] });
+  });
+  return units;
+}
+
+function lastAreaMap(){
+  const confirmed = state.history.filter(h=>h.status==='confirmed');
+  if(confirmed.length===0) return {};
+  const last = confirmed[confirmed.length-1];
+  const map = {};
+  Object.entries(last.assignments).forEach(([areaId, pids])=>{
+    pids.forEach(pid=> map[pid]=areaId);
+  });
+  return map;
+}
+
+function assignCounts(){
+  const counts = {};
+  state.people.forEach(p=>counts[p.id]=0);
+  state.history.forEach(h=>{
+    Object.values(h.assignments).flat().forEach(pid=>{ if(counts[pid]!==undefined) counts[pid]++; });
+  });
+  return counts;
+}
+
+function generateDraft(){
+  const notes = [];
+  const units = buildUnits();
+  const lastMap = lastAreaMap();
+  const counts = assignCounts();
+  const unitScore = (u)=> u.members.reduce((s,m)=>s+ (counts[m.id]||0), 0) / u.members.length;
+
+  const areasSorted = [...state.areas].sort((a,b)=>b.difficulty-a.difficulty);
+  const assignments = {};
+  state.areas.forEach(a=> assignments[a.id]=[]);
+
+  let remainingUnits = [...units];
+
+  areasSorted.forEach(area=>{
+    let filled = 0;
+    let areaGender = null;
+    // sort candidates by fairness score (least assigned first)
+    remainingUnits.sort((a,b)=>unitScore(a)-unitScore(b));
+    let i=0;
+    while(filled < area.capacity && i < remainingUnits.length){
+      const u = remainingUnits[i];
+      const size = u.members.length;
+      if(filled + size > area.capacity){ i++; continue; }
+      const levelOk = u.level <= area.difficulty || area.difficulty<=1 ? true : u.members.every(m=>m.level>=area.difficulty);
+      const genderOk = areaGender===null || u.gender===areaGender;
+      const noRepeat = u.members.every(m=> lastMap[m.id] !== area.id);
+      if(levelOk && genderOk && noRepeat){
+        assignments[area.id].push(...u.members.map(m=>m.id));
+        filled += size;
+        areaGender = u.gender;
+        remainingUnits.splice(i,1);
+      } else {
+        i++;
+      }
+    }
+    if(filled < area.capacity){
+      // relax repeat rule first
+      i=0;
+      while(filled < area.capacity && i < remainingUnits.length){
+        const u = remainingUnits[i];
+        const size = u.members.length;
+        if(filled + size > area.capacity){ i++; continue; }
+        const genderOk = areaGender===null || u.gender===areaGender;
+        if(genderOk){
+          assignments[area.id].push(...u.members.map(m=>m.id));
+          filled += size;
+          areaGender = u.gender;
+          remainingUnits.splice(i,1);
+          notes.push(`"${area.name}" 배정 시 연속 배정 금지 조건을 완화했어요. 확인해주세요.`);
+        } else { i++; }
+      }
+    }
+    if(filled < area.capacity){
+      notes.push(`"${area.name}"에 인원이 부족해요 (${filled}/${area.capacity}명). 직접 채워주세요.`);
+    }
+  });
+
+  if(remainingUnits.length>0){
+    notes.push(`미배정 인원이 있어요. 구역별 정원을 확인하거나 직접 배정해주세요.`);
+  }
+
+  return {
+    id: uid(),
+    month: currentMonthLabel(),
+    assignments,
+    status: 'draft',
+    notes,
+    createdAt: Date.now()
+  };
+}
+
+// ---------- events ----------
+function bindEvents(){
+  document.querySelectorAll('[data-tab]').forEach(b=>{
+    b.onclick = ()=> setTab(b.dataset.tab);
+  });
+
+  // people tab
+  const addPersonBtn = document.getElementById('addPersonBtn');
+  if(addPersonBtn){
+    const catSel = document.getElementById('p_category');
+    const mentorWrap = document.getElementById('mentorPickWrap');
+    catSel.onchange = ()=>{ mentorWrap.style.display = catSel.value==='mentee' ? 'flex' : 'none'; };
+    addPersonBtn.onclick = async ()=>{
+      const name = document.getElementById('p_name').value.trim();
+      if(!name){ toast('이름을 입력해주세요.'); return; }
+      const gender = document.getElementById('p_gender').value;
+      const category = document.getElementById('p_category').value;
+      const team = document.getElementById('p_team').value.trim();
+      const level = parseInt(document.getElementById('p_level').value)||1;
+      const mentorId = category==='mentee' ? (document.getElementById('p_mentor').value || null) : null;
+      const person = { name, gender, category, team, level, mentorId };
+      await addPersonDB(person);
+      state.people.push(person);
+      render();
+      toast('인원을 추가했어요.');
+    };
+    document.querySelectorAll('[data-edit-person]').forEach(b=>{
+      b.onclick = ()=>{ state._editingPersonId = b.dataset.editPerson; render(); };
+    });
+    const cancelEdit = document.querySelector('[data-cancel-edit]');
+    if(cancelEdit) cancelEdit.onclick = ()=>{ state._editingPersonId = null; render(); };
+    document.querySelectorAll('[data-save-person]').forEach(b=>{
+      b.onclick = async ()=>{
+        const id = b.dataset.savePerson;
+        const p = state.people.find(x=>x.id===id);
+        if(!p) return;
+        p.name = document.getElementById('ep_name').value.trim() || p.name;
+        p.gender = document.getElementById('ep_gender').value;
+        p.category = document.getElementById('ep_category').value;
+        p.team = document.getElementById('ep_team').value.trim();
+        p.level = parseInt(document.getElementById('ep_level').value)||1;
+        p.mentorId = document.getElementById('ep_mentor').value || null;
+        await updatePersonDB(p);
+        state._editingPersonId = null;
+        render();
+        toast('수정했어요.');
+      };
+    });
+    document.querySelectorAll('[data-del-person]').forEach(b=>{
+      b.onclick = async ()=>{
+        const id = b.dataset.delPerson;
+        await deletePersonDB(id);
+        await clearMentorRefDB(id);
+        state.people = state.people.filter(p=>p.id!==id);
+        state.people.forEach(p=>{ if(p.mentorId===id) p.mentorId=null; });
+        render();
+      };
+    });
+    const uploadBox = document.getElementById('uploadBox');
+    const fileInput = document.getElementById('fileInput');
+    uploadBox.onclick = ()=> fileInput.click();
+    uploadBox.ondragover = (e)=>{ e.preventDefault(); uploadBox.style.borderColor='var(--moss)'; };
+    uploadBox.ondrop = (e)=>{ e.preventDefault(); if(e.dataTransfer.files[0]) handleRosterImage(e.dataTransfer.files[0]); };
+    fileInput.onchange = ()=>{ if(fileInput.files[0]) handleRosterImage(fileInput.files[0]); };
+  }
+
+  // areas tab
+  const addAreaBtn = document.getElementById('addAreaBtn');
+  if(addAreaBtn){
+    addAreaBtn.onclick = async ()=>{
+      const name = document.getElementById('a_name').value.trim();
+      if(!name){ toast('구역명을 입력해주세요.'); return; }
+      const capacity = parseInt(document.getElementById('a_capacity').value)||1;
+      const difficulty = parseInt(document.getElementById('a_difficulty').value)||1;
+      const area = { name, capacity, difficulty };
+      await addAreaDB(area);
+      state.areas.push(area);
+      render();
+      toast('구역을 추가했어요.');
+    };
+    document.querySelectorAll('[data-del-area]').forEach(b=>{
+      b.onclick = async ()=>{
+        await deleteAreaDB(b.dataset.delArea);
+        state.areas = state.areas.filter(a=>a.id!==b.dataset.delArea);
+        render();
+      };
+    });
+  }
+
+  // generate tab
+  const genBtn = document.getElementById('genDraftBtn');
+  if(genBtn){
+    genBtn.onclick = async ()=>{
+      const draft = generateDraft();
+      await createDraftDB(draft);
+      state.draft = draft;
+      render();
+    };
+  }
+  const regenBtn = document.getElementById('regenBtn');
+  if(regenBtn){
+    regenBtn.onclick = async ()=>{
+      await deleteDraftDB(state.draft.id);
+      const draft = generateDraft();
+      await createDraftDB(draft);
+      state.draft = draft;
+      render();
+    };
+  }
+  const confirmBtn = document.getElementById('confirmBtn');
+  if(confirmBtn){
+    confirmBtn.onclick = async ()=>{
+      await confirmDraftDB();
+      state.draft.status='confirmed';
+      state.history.push(state.draft);
+      state.draft = null;
+      render();
+      toast('이번 달 배정표를 확정했어요.');
+    };
+  }
+  document.querySelectorAll('[data-remove-assign]').forEach(b=>{
+    b.onclick = async ()=>{
+      const [areaId, pid] = b.dataset.removeAssign.split('|');
+      state.draft.assignments[areaId] = state.draft.assignments[areaId].filter(id=>id!==pid);
+      await updateDraftDB();
+      render();
+    };
+  });
+  document.querySelectorAll('[data-add-to]').forEach(sel=>{
+    sel.onchange = async ()=>{
+      const areaId = sel.dataset.addTo;
+      const pid = sel.value;
+      if(!pid) return;
+      state.draft.assignments[areaId].push(pid);
+      await updateDraftDB();
+      render();
+    };
+  });
+  const exportBtn = document.getElementById('exportImgBtn');
+  if(exportBtn){
+    exportBtn.onclick = ()=> exportBoardImage();
+  }
+
+  // history tab
+  document.querySelectorAll('[data-view-history]').forEach(item=>{
+    item.onclick = ()=>{
+      const h = state.history.find(x=>x.id===item.dataset.viewHistory);
+      document.getElementById('historyDetail').innerHTML = renderDraftBoard(h, false);
+      bindEvents();
+      document.getElementById('historyDetail').scrollIntoView({behavior:'smooth'});
+    };
+  });
+}
+
+function exportBoardImage(){
+  const el = document.getElementById('captureArea');
+  toast('이미지 생성 중...');
+  html2canvas(el, { backgroundColor:'#fffefb', scale:2 }).then(canvas=>{
+    const link = document.createElement('a');
+    link.download = `청소당번표_${(state.draft?state.draft.month:'').replace(/\s/g,'')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+}
+
+// ---------- roster image OCR via Gemini (Supabase Edge Function) ----------
+async function handleRosterImage(file){
+  const statusEl = document.getElementById('uploadStatus');
+  statusEl.textContent = '이미지를 분석하는 중...';
+  try{
+    const base64 = await new Promise((res,rej)=>{
+      const r = new FileReader();
+      r.onload = ()=> res(r.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+    const mediaType = file.type || 'image/png';
+    const response = await fetch('https://pvuriqyiyghjuprewkwj.supabase.co/functions/v1/analyze-image', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ base64, mediaType })
+    });
+    const data = await response.json();
+    let names = Array.isArray(data.names) ? data.names : [];
+    if(!Array.isArray(names) || names.length===0){
+      statusEl.textContent = '이름을 인식하지 못했어요. 직접 입력해주세요.';
+      return;
+    }
+    let added = 0;
+    for(const name of names){
+      if(typeof name!=='string' || !name.trim()) continue;
+      if(state.people.some(p=>p.name===name.trim())) continue;
+      const person = { name: name.trim(), gender:'m', category:'normal', team:'', level:1, mentorId:null };
+      await addPersonDB(person);
+      state.people.push(person);
+      added++;
+    }
+    statusEl.textContent = `${added}명을 초안으로 추가했어요. 성별·카테고리·레벨을 확인해주세요.`;
+    render();
+  }catch(e){
+    statusEl.textContent = '분석 중 문제가 발생했어요. 다시 시도해주세요.';
+  }
+}
+
+loadAll();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
