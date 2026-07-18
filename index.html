@@ -483,6 +483,7 @@ function renderPeopleTab(){
       <input type="number" id="bulk_level" placeholder="레벨" min="1" max="5" style="width:70px;">
       <input type="number" id="bulk_age" placeholder="나이" min="1" max="120" style="width:70px;">
       <button class="btn small" id="bulkApplyBtn" style="background:#fff;color:var(--moss-dark);border-color:#fff;">일괄 적용</button>
+      <button class="btn small" id="bulkDeleteBtn" style="background:#b5453a;border-color:#b5453a;color:#fff;">삭제</button>
       <button class="btn ghost small" id="bulkCancelBtn" style="color:#fff;border-color:rgba(255,255,255,0.4);">취소</button>
     </div>` : '';
 
@@ -936,6 +937,17 @@ function bindEvents(){
         toast(`${targets.length}명을 수정했어요.`);
       };
       document.getElementById('bulkCancelBtn').onclick=()=>{ state._selectedPeople.clear(); render(); };
+      document.getElementById('bulkDeleteBtn').onclick = async()=>{
+        const targets = state.people.filter(p=>state._selectedPeople.has(p.id));
+        if(!confirm(`선택한 ${targets.length}명을 삭제할까요?`)) return;
+        for(const p of targets){
+          await supabase.from('people').delete().eq('id',p.id);
+          state.people = state.people.filter(x=>x.id!==p.id);
+        }
+        state._selectedPeople.clear();
+        render();
+        toast(`${targets.length}명을 삭제했어요.`);
+      };
     }
 
     const uploadBox = document.getElementById('uploadBox');
