@@ -496,12 +496,17 @@ function renderPeopleTab(){
     </div>` : '';
 
   return `
-    <div class="card">
-      <h2>명렬표 이미지로 불러오기</h2>
-      <p class="desc">인원 명단이 담긴 이미지를 올리면 이름을 자동으로 추출해서 초안으로 등록해드려요.</p>
-      <div class="upload-box" id="uploadBox">이미지를 클릭해서 선택하거나 드래그해서 놓아주세요<br><span style="font-size:11px">JPG, PNG 지원</span></div>
-      <input type="file" id="fileInput" accept="image/*" style="display:none">
-      <div id="uploadStatus" style="font-size:12.5px;color:var(--muted);margin-top:8px;"></div>
+    <div class="card" style="overflow:hidden;position:relative;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+        <div style="flex:1;min-width:0;">
+          <h2>명렬표 이미지로 불러오기</h2>
+          <p class="desc">인원 명단이 담긴 이미지를 올리면 이름을 자동으로 추출해서 초안으로 등록해드려요.</p>
+          <div class="upload-box" id="uploadBox">이미지를 클릭해서 선택하거나 드래그해서 놓아주세요<br><span style="font-size:11px">JPG, PNG 지원</span></div>
+          <input type="file" id="fileInput" accept="image/*" style="display:none">
+          <div id="uploadStatus" style="font-size:12.5px;color:var(--muted);margin-top:8px;"></div>
+        </div>
+        <img src="./images/누끼/DSC02220-Photoroom.png" alt="" style="height:130px;width:auto;display:block;flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.12));margin-bottom:-18px;align-self:flex-end;">
+      </div>
     </div>
     <div class="card">
       <h2>인원 추가</h2>
@@ -521,14 +526,14 @@ function renderPeopleTab(){
     </div>
     <div class="card" style="padding-bottom:${sel.size>0?'60px':'18px'}">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <h2 style="margin:0">등록된 인원 (${state.people.length}명)</h2>
+        ${state.people.length>0?`
         <div style="display:flex;align-items:flex-end;gap:6px;">
           <img class="nukki-deco" src="./images/누끼/주님한분2-Photoroom.png" alt="">
-          <h2 style="margin:0">등록된 인원 (${state.people.length}명)</h2>
-        </div>
-        ${state.people.length>0?`
-        <div class="nukki-select-btn${allChecked?' all-selected':''}" id="nukkiFab">
-          <img src="./images/누끼/주님한분1-Photoroom.png" alt="전체 선택">
-          <span class="sel-label">${allChecked?'선택 해제':'전체 선택'}</span>
+          <div class="nukki-select-btn${allChecked?' all-selected':''}" id="nukkiFab">
+            <img src="./images/누끼/주님한분1-Photoroom.png" alt="전체 선택">
+            <span class="sel-label">${allChecked?'선택 해제':'전체 선택'}</span>
+          </div>
         </div>`:''}
       </div>
       ${state.people.length===0?'<div class="empty">아직 등록된 인원이 없어요.</div>':`
