@@ -936,16 +936,20 @@ async function handleRosterImage(file){
       statusEl.textContent = '이름을 인식하지 못했어요. 직접 입력해주세요.';
       return;
     }
-    let added = 0;
-    for(const name of names){
-      if(typeof name!=='string' || !name.trim()) continue;
-      if(state.people.some(p=>p.name===name.trim())) continue;
-      const person = { name: name.trim(), gender:'m', category:'normal', team:'', level:1, mentorId:null };
+    const uniqueNames = [...new Set(names.map(n=>typeof n==='string'?n.trim():'').filter(Boolean))];
+    const duplicates = uniqueNames.filter(name=>state.people.some(p=>p.name===name));
+    const toAdd = uniqueNames.filter(name=>!state.people.some(p=>p.name===name));
+    for(const name of toAdd){
+      const person = { name, gender:'m', category:'normal', team:'', level:1, mentorId:null, age:null };
       await addPersonDB(person);
       state.people.push(person);
-      added++;
     }
-    statusEl.textContent = `${added}명을 초안으로 추가했어요. 성별·카테고리·레벨을 확인해주세요.`;
+    let msg = '';
+    if(toAdd.length>0) msg += `${toAdd.length}명 추가 완료. `;
+    if(duplicates.length>0) msg += `중복 ${duplicates.length}명 건너뜀 (${duplicates.join(', ')}). `;
+    if(toAdd.length===0 && duplicates.length===0) msg = '이름을 인식하지 못했어요. 직접 입력해주세요.';
+    else if(toAdd.length>0) msg += '성별·카테고리·레벨을 확인해주세요.';
+    statusEl.textContent = msg;
     render();
   }catch(e){
     statusEl.textContent = '분석 중 문제가 발생했어요. 다시 시도해주세요.';
