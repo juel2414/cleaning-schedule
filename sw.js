@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cleaning-schedule-v1';
+const CACHE_NAME = 'cleaning-schedule-v2';
 const SHELL_FILES = [
   './index.html',
   './manifest.json',
