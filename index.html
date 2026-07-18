@@ -912,12 +912,13 @@ function bindEvents(){
     document.querySelectorAll('[data-del-person]').forEach(b=>{
       b.onclick = async (e)=>{
         e.stopPropagation();
-        const id = b.dataset.delPerson;
+        const rawId = b.dataset.delPerson;
+        const id = isNaN(rawId) ? rawId : Number(rawId);
         await deletePersonDB(id);
         await clearMentorRefDB(id);
-        state.people = state.people.filter(p=>p.id!==id);
-        state.people.forEach(p=>{ if(p.mentorId===id) p.mentorId=null; });
-        state._selectedPeople.delete(id);
+        state.people = state.people.filter(p=>p.id!=rawId);
+        state.people.forEach(p=>{ if(p.mentorId==rawId) p.mentorId=null; });
+        state._selectedPeople.forEach(sid=>{ if(String(sid)===rawId) state._selectedPeople.delete(sid); });
         render();
       };
     });
@@ -951,7 +952,7 @@ function bindEvents(){
         const targets = state.people.filter(p=>state._selectedPeople.has(p.id));
         if(!confirm(`선택한 ${targets.length}명을 삭제할까요?`)) return;
         for(const p of targets){
-          await supabase.from('people').delete().eq('id',p.id);
+          await sb.from('people').delete().eq('id',p.id);
           state.people = state.people.filter(x=>x.id!==p.id);
         }
         state._selectedPeople.clear();
