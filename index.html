@@ -85,6 +85,8 @@
   .filter-tab[data-f="mentee"].active{background:var(--clay);border-color:var(--clay);color:#fff;}
   .section-label{font-size:11px;font-weight:700;color:var(--muted);padding:10px 10px 4px;letter-spacing:0.5px;text-transform:uppercase;}
   .gender-sublabel{font-size:11px;font-weight:600;color:var(--muted);padding:6px 18px 2px;opacity:0.7;}
+  .area-inline{border:1px solid var(--line);border-radius:5px;padding:3px 6px;font-size:13px;text-align:center;background:var(--surface);}
+  .area-inline:focus{outline:none;border-color:var(--moss);}
   .section-mgr{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
   .section-mgr-label{font-size:11px;font-weight:700;color:var(--muted);margin-right:2px;}
   .section-chip{display:inline-flex;align-items:center;gap:3px;background:var(--surface);border:1.5px solid var(--line);border-radius:20px;padding:3px 10px 3px 12px;font-size:12px;}
@@ -263,6 +265,7 @@ async function addAreaDB(a){
   if(!error && data) a.id = data.id;
 }
 async function deleteAreaDB(id){ await sb.from('areas').delete().eq('id', id); }
+async function updateAreaDB(a){ await sb.from('areas').update({name:a.name,capacity:a.capacity,difficulty:a.difficulty}).eq('id',a.id); }
 
 async function createDraftDB(draft){
   const {data, error} = await sb.from('schedules').insert({
@@ -535,10 +538,10 @@ function renderPeopleTab(){
 // ---------- areas tab ----------
 function renderAreasTab(){
   const rows = state.areas.map(a=>`
-    <tr>
+    <tr data-area-id="${a.id}">
       <td>${a.name}</td>
-      <td>${a.capacity}명</td>
-      <td>난이도 ${a.difficulty}</td>
+      <td><input type="number" class="area-inline" data-area-field="capacity" data-area-id="${a.id}" value="${a.capacity}" min="1" style="width:54px;"> 명</td>
+      <td><input type="number" class="area-inline" data-area-field="difficulty" data-area-id="${a.id}" value="${a.difficulty}" min="1" max="5" style="width:44px;"> / 5</td>
       <td><button class="btn ghost small" data-del-area="${a.id}">삭제</button></td>
     </tr>`).join('');
   return `
@@ -1049,6 +1052,21 @@ function bindEvents(){
         await deleteAreaDB(b.dataset.delArea);
         state.areas = state.areas.filter(a=>a.id!==b.dataset.delArea);
         render();
+      };
+    });
+
+    // 구역 인라인 편집 (필요 인원 / 난이도)
+    document.querySelectorAll('.area-inline').forEach(input=>{
+      input.onchange = async ()=>{
+        const id = input.dataset.areaId;
+        const field = input.dataset.areaField;
+        const val = parseInt(input.value);
+        if(isNaN(val)||val<1) return;
+        const area = state.areas.find(a=>String(a.id)===String(id));
+        if(!area) return;
+        area[field] = val;
+        await updateAreaDB(area);
+        toast(`${area.name} ${field==='difficulty'?'난이도':'필요 인원'}을 ${val}로 변경했어요.`);
       };
     });
   }
