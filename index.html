@@ -467,6 +467,7 @@ function renderPeopleTab(){
         <label class="f">레벨<input type="number" id="p_level" value="1" min="1" max="5" style="width:55px"></label>
         <label class="f">나이<input type="number" id="p_age" placeholder="나이" min="1" max="120" style="width:60px"></label>
         <label class="f" id="mentorPickWrap" style="display:none">담당 멘토<select id="p_mentor"><option value="">선택</option>${mentors.map(m=>`<option value="${m.id}">${m.name}</option>`).join('')}</select></label>
+        <button class="btn ghost small" id="cancelPersonBtn" style="align-self:flex-end;display:none;">취소</button>
         <button class="btn" id="addPersonBtn" style="align-self:flex-end">추가</button>
       </div>
         </div>
@@ -748,8 +749,23 @@ function bindEvents(){
     const catSel = document.getElementById('p_category');
     const mentorWrap = document.getElementById('mentorPickWrap');
     catSel.onchange = ()=>{ mentorWrap.style.display = catSel.value==='mentee' ? 'flex' : 'none'; };
+    const cancelPersonBtn = document.getElementById('cancelPersonBtn');
+    const pNameInput = document.getElementById('p_name');
+    const showCancelBtn = ()=>{ cancelPersonBtn.style.display = pNameInput.value.trim() ? '' : 'none'; };
+    pNameInput.addEventListener('input', showCancelBtn);
+    cancelPersonBtn.onclick = ()=>{
+      pNameInput.value='';
+      document.getElementById('p_team').value='';
+      document.getElementById('p_level').value='1';
+      document.getElementById('p_age').value='';
+      document.getElementById('p_gender').value='m';
+      document.getElementById('p_category').value='normal';
+      if(document.getElementById('p_mentor')) document.getElementById('p_mentor').value='';
+      document.getElementById('mentorPickWrap').style.display='none';
+      cancelPersonBtn.style.display='none';
+    };
     addPersonBtn.onclick = async ()=>{
-      const name = document.getElementById('p_name').value.trim();
+      const name = pNameInput.value.trim();
       if(!name){ toast('이름을 입력해주세요.'); return; }
       const gender = document.getElementById('p_gender').value;
       const category = document.getElementById('p_category').value;
@@ -761,6 +777,7 @@ function bindEvents(){
       const person = { name, gender, category, team, level, mentorId, age };
       await addPersonDB(person);
       state.people.push(person);
+      pNameInput.value=''; cancelPersonBtn.style.display='none';
       render();
       toast('인원을 추가했어요.');
     };
@@ -1103,7 +1120,12 @@ async function handleRosterImage(file){
         <button class="btn" id="addPeopleBtn">인원 ${newPeople.length}명 추가하기</button>
       </div>` : '';
 
-    previewEl.innerHTML = areasHtml + peopleHtml;
+    const cancelImportBtn = `<button class="btn ghost small" id="cancelImportBtn" style="margin-bottom:8px;">✕ 취소하기</button>`;
+    previewEl.innerHTML = cancelImportBtn + areasHtml + peopleHtml;
+    document.getElementById('cancelImportBtn').onclick = ()=>{
+      previewEl.innerHTML='';
+      statusEl.textContent='';
+    };
 
     // 구역 추가
     const addAreasBtn = document.getElementById('addAreasBtn');
