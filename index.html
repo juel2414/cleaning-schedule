@@ -666,17 +666,42 @@ function exportBoardImage(){
 }
 
 // ---------- roster image OCR via Tesseract.js ----------
+function preprocessImage(file) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = imageData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const gray = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+        const val = gray < 160 ? 0 : 255;
+        d[i] = d[i+1] = d[i+2] = val;
+      }
+      ctx.putImageData(imageData, 0, 0);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.src = url;
+  });
+}
+
 async function handleRosterImage(file){
   const statusEl = document.getElementById('uploadStatus');
-  statusEl.textContent = '이미지를 분석하는 중...';
+  statusEl.textContent = '이미지를 전처리하는 중...';
   try{
-    const imageUrl = URL.createObjectURL(file);
-    const result = await Tesseract.recognize(imageUrl, 'kor+eng', {
+    const processedDataUrl = await preprocessImage(file);
+    statusEl.textContent = '이미지를 분석하는 중...';
+    const result = await Tesseract.recognize(processedDataUrl, 'kor+eng', {
       logger: m => { if(m.status === 'recognizing text') statusEl.textContent = `분석 중... ${Math.round(m.progress*100)}%`; }
     });
-    URL.revokeObjectURL(imageUrl);
     console.log('Tesseract raw text:', result.data.text);
-    const lines = result.data.text.split('\n').map(s => s.trim()).filter(s => s.length >= 2 && s.length <= 10 && /[가-힣]/.test(s));
+    const lines = result.data.text.split('\n').map(s => s.trim()).filter(s => s.length >= 2 && s.length <= 6 && /[가-힣]{2}/.test(s) && !/\d/.test(s));
     let names = [...new Set(lines)];
     if(!Array.isArray(names) || names.length===0){
       statusEl.textContent = '이름을 인식하지 못했어요. 직접 입력해주세요.';
