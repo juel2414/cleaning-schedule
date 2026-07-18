@@ -362,65 +362,49 @@ function renderPeopleTab(){
   const counts = {
     all: state.people.length,
     worker: state.people.filter(p=>p.category==='worker').length,
-    mentor: state.people.filter(p=>p.category==='mentor').length,
-    mentee: state.people.filter(p=>p.category==='mentee').length,
-    normal: state.people.filter(p=>p.category==='normal').length,
+    junggo: state.people.filter(p=>p.team==='중고등'&&p.category!=='worker').length,
+    chodeung: state.people.filter(p=>p.team==='초등'&&p.category!=='worker').length,
   };
 
   const filterBar = `<div class="filter-tabs">
     <button class="filter-tab${f==='all'?' active':''}" data-f="all">전체 ${counts.all}</button>
     <button class="filter-tab${f==='worker'?' active':''}" data-f="worker">사역자 ${counts.worker}</button>
-    <button class="filter-tab${f==='mentor'?' active':''}" data-f="mentor">멘토 ${counts.mentor}</button>
-    <button class="filter-tab${f==='mentee'?' active':''}" data-f="mentee">멘티 ${counts.mentee}</button>
-    <button class="filter-tab${f==='normal'?' active':''}" data-f="normal">일반 ${counts.normal}</button>
+    <button class="filter-tab${f==='junggo'?' active':''}" data-f="junggo">중고등 ${counts.junggo}</button>
+    <button class="filter-tab${f==='chodeung'?' active':''}" data-f="chodeung">초등 ${counts.chodeung}</button>
   </div>`;
 
   // 표시할 인원 필터링
-  const visible = f==='all' ? state.people : state.people.filter(p=>p.category===f);
-  const mentors = (f==='all'||f==='mentor') ? state.people.filter(p=>p.category==='mentor') : [];
-  const mentees = state.people.filter(p=>p.category==='mentee');
-  const others = visible.filter(p=>p.category!=='mentor'&&p.category!=='mentee');
+  const visible = f==='all' ? state.people
+    : f==='worker' ? state.people.filter(p=>p.category==='worker')
+    : f==='junggo' ? state.people.filter(p=>p.team==='중고등'&&p.category!=='worker')
+    : state.people.filter(p=>p.team==='초등'&&p.category!=='worker');
 
-  // 그룹: 멘토 + 그 멘티들, 나머지
+  // 그룹: 팀별 섹션
   let rows = '';
   const usedIds = new Set();
   if(f==='all'){
-    // 전체: 사역자 → 멘토+멘티 → 일반 섹션
     const workers = state.people.filter(p=>p.category==='worker');
     if(workers.length>0){
       rows += `<div class="section-label">🔧 사역자</div>`;
       workers.forEach(p=>{ usedIds.add(p.id); rows += renderPersonRow(p, false); });
     }
-    if(mentors.length>0){
-      rows += `<div class="section-label">⭐ 멘토 / 멘티</div>`;
-      mentors.forEach(m=>{
-        usedIds.add(m.id);
-        rows += renderPersonRow(m, false);
-        mentees.filter(me=>me.mentorId===m.id).forEach(me=>{
-          usedIds.add(me.id);
-          rows += renderPersonRow(me, true);
-        });
-      });
-      const orphanMentees = mentees.filter(me=>!usedIds.has(me.id));
-      orphanMentees.forEach(me=>{ usedIds.add(me.id); rows += renderPersonRow(me, true); });
+    const junggo = state.people.filter(p=>p.team==='중고등'&&p.category!=='worker');
+    if(junggo.length>0){
+      rows += `<div class="section-label">🏫 중고등 (${junggo.length}명)</div>`;
+      junggo.forEach(p=>{ usedIds.add(p.id); rows += renderPersonRow(p, false); });
     }
-    const normals = state.people.filter(p=>p.category==='normal');
-    if(normals.length>0){
-      rows += `<div class="section-label">👤 일반</div>`;
-      normals.forEach(p=>{ rows += renderPersonRow(p, false); });
+    const chodeung = state.people.filter(p=>p.team==='초등'&&p.category!=='worker');
+    if(chodeung.length>0){
+      rows += `<div class="section-label">🎒 초등 (${chodeung.length}명)</div>`;
+      chodeung.forEach(p=>{ usedIds.add(p.id); rows += renderPersonRow(p, false); });
     }
-  } else if(f==='mentor'){
-    mentors.forEach(m=>{
-      usedIds.add(m.id);
-      rows += renderPersonRow(m, false);
-      mentees.filter(me=>me.mentorId===m.id).forEach(me=>{
-        usedIds.add(me.id);
-        rows += renderPersonRow(me, true);
-      });
-    });
+    const etc = state.people.filter(p=>!usedIds.has(p.id));
+    if(etc.length>0){
+      rows += `<div class="section-label">👤 기타</div>`;
+      etc.forEach(p=>{ rows += renderPersonRow(p, false); });
+    }
   } else {
-    others.forEach(p=>{ rows += renderPersonRow(p, false); });
-    mentees.filter(me=>!usedIds.has(me.id)).forEach(me=>{ rows += renderPersonRow(me, true); });
+    visible.forEach(p=>{ rows += renderPersonRow(p, false); });
   }
 
   const allChecked = state.people.length>0 && state.people.every(p=>sel.has(p.id));
