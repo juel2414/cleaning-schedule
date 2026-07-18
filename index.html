@@ -58,6 +58,13 @@
   }
   .hero-text .brand{font-size:24px;font-weight:800;letter-spacing:-0.5px;text-shadow:0 1px 6px rgba(0,0,0,0.4);}
   .hero-text .sub{font-size:12.5px;opacity:0.88;margin-top:2px;text-shadow:0 1px 4px rgba(0,0,0,0.3);}
+  .hero-icon{
+    position:absolute;bottom:16px;right:20px;z-index:1;
+    width:72px;height:72px;border-radius:50%;
+    overflow:hidden;border:2.5px solid rgba(255,255,255,0.7);
+    box-shadow:0 4px 16px rgba(0,0,0,0.3);
+  }
+  .hero-icon img{width:100%;height:100%;object-fit:cover;object-position:center top;}
   .app-inner{padding:0 20px;}
   .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px;}
   .brand{font-size:22px;font-weight:700;letter-spacing:-0.3px;}
@@ -262,6 +269,9 @@ function render(){
       <div class="hero-text">
         <div class="brand">청소 당번표 관리</div>
         <div class="sub">인원과 구역을 등록하면 조건에 맞춰 매달 배정표를 자동으로 만들어드려요.</div>
+      </div>
+      <div class="hero-icon">
+        <img src="./icon-192.png" alt="앱 아이콘">
       </div>
     </div>
     <div class="app-inner">
