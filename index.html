@@ -131,6 +131,28 @@
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   @media(max-width:640px){.grid2{grid-template-columns:1fr;}}
   .month-label{font-family:'Georgia',serif;font-size:20px;font-weight:700;color:var(--moss-dark);}
+  /* people table */
+  .prow{display:grid;grid-template-columns:28px 1fr auto auto auto auto auto;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid var(--line);font-size:13px;}
+  .prow:hover{background:#f9f7ef;}
+  .prow.mentee-row{background:#fdfaf5;padding-left:32px;grid-template-columns:28px 1fr auto auto auto auto auto;}
+  .prow.mentee-row .mentee-indent{display:inline-block;color:var(--muted);margin-right:4px;font-size:11px;}
+  .prow.selected{background:#eef3ec;}
+  .prow.mentor-row{border-left:3px solid var(--amber);}
+  .prow.mentee-row{border-left:3px solid var(--clay);}
+  .prow.worker-row{border-left:3px solid #9b88d8;}
+  .inline-edit{display:none;position:absolute;z-index:10;background:#fff;border:1px solid var(--moss);border-radius:6px;padding:4px 6px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,0.12);}
+  .editable-cell{position:relative;cursor:pointer;}
+  .editable-cell:hover .edit-hint{opacity:1;}
+  .edit-hint{opacity:0;font-size:10px;color:var(--moss);margin-left:3px;transition:opacity 0.15s;}
+  .bulk-bar{
+    position:fixed;bottom:0;left:0;right:0;background:var(--moss-dark);color:#fff;
+    padding:12px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;z-index:40;
+    box-shadow:0 -2px 12px rgba(0,0,0,0.2);font-size:13px;
+  }
+  .bulk-bar select,.bulk-bar input{font-size:12px;padding:5px 8px;border-radius:5px;border:none;color:var(--ink);}
+  .bulk-bar .bulk-count{font-weight:700;margin-right:4px;}
+  .prow-name{font-weight:600;}
+  .mentor-badge{font-size:10px;background:var(--amber-light);color:#7a5311;border-radius:10px;padding:1px 6px;font-weight:700;margin-left:4px;}
 </style>
 </head>
 <body>
@@ -147,7 +169,9 @@ const state = {
   history: [],
   draft: null,
   tab: 'people',
-  loaded: false
+  loaded: false,
+  _selectedPeople: new Set(),
+  _editingPersonId: null
 };
 
 function dbPersonToState(p){
@@ -265,74 +289,114 @@ function setTab(id){ state.tab = id; render(); }
 function catOptions(selected){
   return ['normal','mentor','mentee','worker'].map(v=>`<option value="${v}" ${selected===v?'selected':''}>${catLabel(v)}</option>`).join('');
 }
+
+function renderPersonRow(p, isMentee){
+  const sel = state._selectedPeople.has(p.id);
+  const mentors = state.people.filter(x=>x.category==='mentor');
+  const rowClass = `prow ${isMentee?'mentee-row':p.category==='mentor'?'mentor-row':p.category==='worker'?'worker-row':''} ${sel?'selected':''}`;
+  const mentorSel = `<select data-inline-mentor="${p.id}" style="font-size:12px;padding:3px 5px;border:1px solid var(--line);border-radius:5px;background:#fdfcf8;">
+    <option value="">-</option>
+    ${mentors.filter(m=>m.id!==p.id).map(m=>`<option value="${m.id}" ${p.mentorId===m.id?'selected':''}>${m.name}</option>`).join('')}
+  </select>`;
+  return `<div class="${rowClass}" data-pid="${p.id}">
+    <input type="checkbox" class="p-check" data-id="${p.id}" ${sel?'checked':''} style="cursor:pointer;width:15px;height:15px;">
+    <span class="prow-name">
+      ${isMentee?'<span class="mentee-indent">└</span>':''}
+      ${p.name}
+      ${p.category==='mentor'?'<span class="mentor-badge">멘토</span>':''}
+    </span>
+    <span class="editable-cell" data-toggle="gender" data-id="${p.id}" title="클릭해서 수정">
+      <span class="tag ${p.gender}">${genderLabel(p.gender)}</span><span class="edit-hint">✎</span>
+    </span>
+    <span class="editable-cell" data-toggle="category" data-id="${p.id}" title="클릭해서 수정">
+      <span class="tag ${p.category}">${catLabel(p.category)}</span><span class="edit-hint">✎</span>
+    </span>
+    <span class="editable-cell" data-toggle="team" data-id="${p.id}" title="클릭해서 수정" style="min-width:50px;">
+      <span style="font-size:12px;color:${p.team?'var(--ink)':'var(--muted)'};">${p.team||'팀없음'}</span><span class="edit-hint">✎</span>
+    </span>
+    <span class="editable-cell" data-toggle="level" data-id="${p.id}" title="클릭해서 수정">
+      <span style="font-size:12px;font-weight:700;color:var(--moss-dark);">Lv.${p.level}</span><span class="edit-hint">✎</span>
+    </span>
+    ${p.category==='mentee'||p.category==='normal'||p.category==='worker' ? mentorSel : '<span style="font-size:12px;color:var(--muted);">-</span>'}
+    <button class="btn ghost small danger" data-del-person="${p.id}" style="padding:3px 8px;font-size:11px;">삭제</button>
+  </div>`;
+}
+
 function renderPeopleTab(){
   const mentors = state.people.filter(p=>p.category==='mentor');
-  const editingId = state._editingPersonId || null;
-  const rows = state.people.map(p=>{
-    const mentorName = p.mentorId ? (personById(p.mentorId)?.name || '-') : '-';
-    if(editingId === p.id){
-      return `<tr class="edit-row" data-edit-id="${p.id}">
-        <td><input type="text" id="ep_name" value="${p.name}" style="width:80px"></td>
-        <td><select id="ep_gender"><option value="m" ${p.gender==='m'?'selected':''}>남</option><option value="f" ${p.gender==='f'?'selected':''}>여</option></select></td>
-        <td><select id="ep_category">${catOptions(p.category)}</select></td>
-        <td><input type="text" id="ep_team" value="${p.team||''}" style="width:70px"></td>
-        <td><input type="number" id="ep_level" value="${p.level}" min="1" max="5" style="width:50px"></td>
-        <td><select id="ep_mentor"><option value="">-</option>${mentors.filter(m=>m.id!==p.id).map(m=>`<option value="${m.id}" ${p.mentorId===m.id?'selected':''}>${m.name}</option>`).join('')}</select></td>
-        <td style="white-space:nowrap">
-          <button class="btn small" data-save-person="${p.id}">저장</button>
-          <button class="btn ghost small" data-cancel-edit>취소</button>
-        </td>
-      </tr>`;
-    }
-    return `<tr>
-      <td>${p.name}</td>
-      <td><span class="tag ${p.gender}">${genderLabel(p.gender)}</span></td>
-      <td><span class="tag ${p.category}">${catLabel(p.category)}</span></td>
-      <td>${p.team || '-'}</td>
-      <td>Lv.${p.level}</td>
-      <td>${p.category==='mentee' ? mentorName : '-'}</td>
-      <td style="white-space:nowrap">
-        <button class="btn ghost small" data-edit-person="${p.id}">수정</button>
-        <button class="btn ghost small danger" data-del-person="${p.id}">삭제</button>
-      </td>
-    </tr>`;
-  }).join('');
+  const mentees = state.people.filter(p=>p.category==='mentee');
+  const others = state.people.filter(p=>p.category!=='mentor'&&p.category!=='mentee');
+  const sel = state._selectedPeople;
+
+  // 그룹: 멘토 + 그 멘티들, 나머지
+  let rows = '';
+  const usedIds = new Set();
+  mentors.forEach(m=>{
+    usedIds.add(m.id);
+    rows += renderPersonRow(m, false);
+    mentees.filter(me=>me.mentorId===m.id).forEach(me=>{
+      usedIds.add(me.id);
+      rows += renderPersonRow(me, true);
+    });
+  });
+  // 멘토 없는 멘티
+  mentees.filter(me=>!usedIds.has(me.id)).forEach(me=>{
+    usedIds.add(me.id);
+    rows += renderPersonRow(me, true);
+  });
+  // 나머지(일반, 사역자)
+  others.forEach(p=>{ rows += renderPersonRow(p, false); });
+
+  const allChecked = state.people.length>0 && state.people.every(p=>sel.has(p.id));
+
+  const bulkBar = sel.size>0 ? `
+    <div class="bulk-bar">
+      <span class="bulk-count">${sel.size}명 선택</span>
+      <select id="bulk_gender"><option value="">성별 변경...</option><option value="m">남</option><option value="f">여</option></select>
+      <select id="bulk_category"><option value="">카테고리 변경...</option><option value="normal">일반</option><option value="mentor">멘토</option><option value="mentee">멘티</option><option value="worker">사역자</option></select>
+      <input type="text" id="bulk_team" placeholder="팀 일괄 변경..." style="width:120px;">
+      <input type="number" id="bulk_level" placeholder="레벨" min="1" max="5" style="width:70px;">
+      <button class="btn small" id="bulkApplyBtn" style="background:#fff;color:var(--moss-dark);border-color:#fff;">일괄 적용</button>
+      <button class="btn ghost small" id="bulkCancelBtn" style="color:#fff;border-color:rgba(255,255,255,0.4);">취소</button>
+    </div>` : '';
+
   return `
     <div class="card">
       <h2>명렬표 이미지로 불러오기</h2>
-      <p class="desc">인원 명단이 담긴 이미지를 올리면 이름을 자동으로 추출해서 초안으로 등록해드려요. 이후 성별·카테고리·레벨은 직접 채워주세요.</p>
+      <p class="desc">인원 명단이 담긴 이미지를 올리면 이름을 자동으로 추출해서 초안으로 등록해드려요.</p>
       <div class="upload-box" id="uploadBox">이미지를 클릭해서 선택하거나 드래그해서 놓아주세요<br><span style="font-size:11px">JPG, PNG 지원</span></div>
       <input type="file" id="fileInput" accept="image/*" style="display:none">
       <div id="uploadStatus" style="font-size:12.5px;color:var(--muted);margin-top:8px;"></div>
     </div>
-
     <div class="card">
       <h2>인원 추가</h2>
-      <p class="desc">이름, 성별, 카테고리, 팀, 레벨(구역 난이도와 매칭)을 입력해주세요.</p>
       <div class="row">
         <label class="f">이름<input type="text" id="p_name" placeholder="이름"></label>
         <label class="f">성별<select id="p_gender"><option value="m">남</option><option value="f">여</option></select></label>
         <label class="f">카테고리<select id="p_category">
-          <option value="normal">일반</option>
-          <option value="mentor">멘토</option>
-          <option value="mentee">멘티</option>
-          <option value="worker">사역자</option>
+          <option value="normal">일반</option><option value="mentor">멘토</option>
+          <option value="mentee">멘티</option><option value="worker">사역자</option>
         </select></label>
-        <label class="f">팀/부서<input type="text" id="p_team" placeholder="예: 1팀" style="width:90px"></label>
-        <label class="f">레벨<input type="number" id="p_level" value="1" min="1" max="5" style="width:60px"></label>
+        <label class="f">팀<input type="text" id="p_team" placeholder="예: 1팀" style="width:80px"></label>
+        <label class="f">레벨<input type="number" id="p_level" value="1" min="1" max="5" style="width:55px"></label>
         <label class="f" id="mentorPickWrap" style="display:none">담당 멘토<select id="p_mentor"><option value="">선택</option>${mentors.map(m=>`<option value="${m.id}">${m.name}</option>`).join('')}</select></label>
         <button class="btn" id="addPersonBtn" style="align-self:flex-end">추가</button>
       </div>
     </div>
-
-    <div class="card">
-      <h2>등록된 인원 (${state.people.length}명)</h2>
-      ${state.people.length===0 ? '<div class="empty">아직 등록된 인원이 없어요.</div>' : `
-      <table>
-        <thead><tr><th>이름</th><th>성별</th><th>카테고리</th><th>팀</th><th>레벨</th><th>담당 멘토</th><th></th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`}
+    <div class="card" style="padding-bottom:${sel.size>0?'60px':'18px'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <h2 style="margin:0">등록된 인원 (${state.people.length}명)</h2>
+        ${state.people.length>0?`<label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer;">
+          <input type="checkbox" id="selectAllChk" ${allChecked?'checked':''}> 전체 선택
+        </label>`:''}
+      </div>
+      ${state.people.length===0?'<div class="empty">아직 등록된 인원이 없어요.</div>':`
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 10px;display:grid;grid-template-columns:28px 1fr auto auto auto auto auto;gap:8px;">
+        <span></span><span>이름</span><span>성별</span><span>카테고리</span><span>팀</span><span>레벨</span><span>담당멘토</span><span></span>
+      </div>
+      <div id="peopleList">${rows}</div>`}
     </div>
+    ${bulkBar}
   `;
 }
 
@@ -599,38 +663,130 @@ function bindEvents(){
       render();
       toast('인원을 추가했어요.');
     };
-    document.querySelectorAll('[data-edit-person]').forEach(b=>{
-      b.onclick = ()=>{ state._editingPersonId = b.dataset.editPerson; render(); };
-    });
-    const cancelEdit = document.querySelector('[data-cancel-edit]');
-    if(cancelEdit) cancelEdit.onclick = ()=>{ state._editingPersonId = null; render(); };
-    document.querySelectorAll('[data-save-person]').forEach(b=>{
-      b.onclick = async ()=>{
-        const id = b.dataset.savePerson;
-        const p = state.people.find(x=>x.id===id);
-        if(!p) return;
-        p.name = document.getElementById('ep_name').value.trim() || p.name;
-        p.gender = document.getElementById('ep_gender').value;
-        p.category = document.getElementById('ep_category').value;
-        p.team = document.getElementById('ep_team').value.trim();
-        p.level = parseInt(document.getElementById('ep_level').value)||1;
-        p.mentorId = document.getElementById('ep_mentor').value || null;
-        await updatePersonDB(p);
-        state._editingPersonId = null;
+
+    // 체크박스 - 개별
+    document.querySelectorAll('.p-check').forEach(chk=>{
+      chk.onclick = (e)=>{
+        e.stopPropagation();
+        const id = chk.dataset.id;
+        if(chk.checked) state._selectedPeople.add(id);
+        else state._selectedPeople.delete(id);
         render();
-        toast('수정했어요.');
       };
     });
+    // 전체 선택
+    const allChk = document.getElementById('selectAllChk');
+    if(allChk) allChk.onclick = ()=>{
+      if(allChk.checked) state.people.forEach(p=>state._selectedPeople.add(p.id));
+      else state._selectedPeople.clear();
+      render();
+    };
+
+    // 인라인 토글 수정 (성별, 카테고리, 팀, 레벨)
+    document.querySelectorAll('.editable-cell').forEach(cell=>{
+      cell.onclick = (e)=>{
+        e.stopPropagation();
+        const type = cell.dataset.toggle;
+        const id = cell.dataset.id;
+        const p = state.people.find(x=>x.id===id);
+        if(!p) return;
+        // 기존 팝업 제거
+        document.querySelectorAll('.inline-pop').forEach(el=>el.remove());
+        const pop = document.createElement('div');
+        pop.className = 'inline-pop';
+        pop.style.cssText = 'position:absolute;z-index:20;background:#fff;border:1px solid var(--moss);border-radius:8px;padding:8px 10px;box-shadow:0 3px 12px rgba(0,0,0,0.15);min-width:120px;';
+        if(type==='gender'){
+          pop.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:4px;">성별</div>
+            <div style="display:flex;gap:6px;">
+              <button class="btn small ${p.gender==='m'?'':'ghost'}" data-val="m">남</button>
+              <button class="btn small ${p.gender==='f'?'':'ghost'}" data-val="f">여</button>
+            </div>`;
+          pop.querySelectorAll('button').forEach(b=>b.onclick=async()=>{
+            p.gender=b.dataset.val; await updatePersonDB(p); pop.remove(); render();
+          });
+        } else if(type==='category'){
+          pop.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:4px;">카테고리</div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              ${['normal','mentor','mentee','worker'].map(v=>`<button class="btn small ${p.category===v?'':'ghost'}" data-val="${v}">${catLabel(v)}</button>`).join('')}
+            </div>`;
+          pop.querySelectorAll('button').forEach(b=>b.onclick=async()=>{
+            p.category=b.dataset.val; await updatePersonDB(p); pop.remove(); render();
+          });
+        } else if(type==='team'){
+          pop.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:4px;">팀</div>
+            <input type="text" value="${p.team||''}" placeholder="팀명" style="width:100px;font-size:13px;padding:5px 7px;border:1px solid var(--line);border-radius:5px;">
+            <button class="btn small" style="margin-top:6px;width:100%;">저장</button>`;
+          const inp = pop.querySelector('input');
+          pop.querySelector('button').onclick = async()=>{
+            p.team=inp.value.trim(); await updatePersonDB(p); pop.remove(); render();
+          };
+          setTimeout(()=>inp.focus(),50);
+        } else if(type==='level'){
+          pop.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:4px;">레벨</div>
+            <div style="display:flex;gap:4px;">
+              ${[1,2,3,4,5].map(n=>`<button class="btn small ${p.level===n?'':'ghost'}" data-val="${n}">${n}</button>`).join('')}
+            </div>`;
+          pop.querySelectorAll('button').forEach(b=>b.onclick=async()=>{
+            p.level=parseInt(b.dataset.val); await updatePersonDB(p); pop.remove(); render();
+          });
+        }
+        cell.style.position='relative';
+        cell.appendChild(pop);
+        const close = (ev)=>{ if(!pop.contains(ev.target)&&ev.target!==cell){ pop.remove(); document.removeEventListener('click',close); }};
+        setTimeout(()=>document.addEventListener('click',close),100);
+      };
+    });
+
+    // 담당 멘토 인라인 select
+    document.querySelectorAll('[data-inline-mentor]').forEach(sel=>{
+      sel.onchange = async()=>{
+        const p = state.people.find(x=>x.id===sel.dataset.inlineMentor);
+        if(!p) return;
+        p.mentorId = sel.value || null;
+        await updatePersonDB(p);
+        render();
+        toast('멘토를 변경했어요.');
+      };
+    });
+
+    // 삭제
     document.querySelectorAll('[data-del-person]').forEach(b=>{
-      b.onclick = async ()=>{
+      b.onclick = async (e)=>{
+        e.stopPropagation();
         const id = b.dataset.delPerson;
         await deletePersonDB(id);
         await clearMentorRefDB(id);
         state.people = state.people.filter(p=>p.id!==id);
         state.people.forEach(p=>{ if(p.mentorId===id) p.mentorId=null; });
+        state._selectedPeople.delete(id);
         render();
       };
     });
+
+    // 일괄 수정
+    const bulkApplyBtn = document.getElementById('bulkApplyBtn');
+    if(bulkApplyBtn){
+      bulkApplyBtn.onclick = async()=>{
+        const gender = document.getElementById('bulk_gender').value;
+        const category = document.getElementById('bulk_category').value;
+        const team = document.getElementById('bulk_team').value.trim();
+        const levelRaw = document.getElementById('bulk_level').value;
+        const level = levelRaw ? parseInt(levelRaw) : null;
+        const targets = state.people.filter(p=>state._selectedPeople.has(p.id));
+        for(const p of targets){
+          if(gender) p.gender=gender;
+          if(category) p.category=category;
+          if(team) p.team=team;
+          if(level) p.level=level;
+          await updatePersonDB(p);
+        }
+        state._selectedPeople.clear();
+        render();
+        toast(`${targets.length}명을 수정했어요.`);
+      };
+      document.getElementById('bulkCancelBtn').onclick=()=>{ state._selectedPeople.clear(); render(); };
+    }
+
     const uploadBox = document.getElementById('uploadBox');
     const fileInput = document.getElementById('fileInput');
     uploadBox.onclick = ()=> fileInput.click();
