@@ -162,7 +162,10 @@
   .toast{
     position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--moss-dark);color:#fff;
     padding:10px 18px;border-radius:8px;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,0.15);z-index:50;
+    display:flex;align-items:center;gap:12px;
   }
+  .toast-undo{background:none;border:1.5px solid rgba(255,255,255,0.5);color:#fff;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;white-space:nowrap;}
+  .toast-undo:hover{background:rgba(255,255,255,0.15);}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   @media(max-width:640px){.grid2{grid-template-columns:1fr;}}
   .month-label{font-family:'Georgia',serif;font-size:20px;font-weight:700;color:var(--moss-dark);}
@@ -276,11 +279,24 @@ async function confirmDraftDB(){
 async function deleteDraftDB(id){ await sb.from('schedules').delete().eq('id', id); }
 
 function uid(){ return Math.random().toString(36).slice(2,9); }
-function toast(msg){
+function toast(msg, undoFn=null){
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
   const t = document.createElement('div');
-  t.className='toast'; t.textContent=msg;
+  t.className='toast';
+  const span = document.createElement('span');
+  span.textContent = msg;
+  t.appendChild(span);
+  let timer;
+  if(undoFn){
+    const btn = document.createElement('button');
+    btn.className='toast-undo'; btn.textContent='되돌리기';
+    btn.onclick = ()=>{ clearTimeout(timer); t.remove(); undoFn(); };
+    t.appendChild(btn);
+    timer = setTimeout(()=>t.remove(), 5000);
+  } else {
+    timer = setTimeout(()=>t.remove(), 2200);
+  }
   document.body.appendChild(t);
-  setTimeout(()=>t.remove(), 2200);
 }
 
 function personById(id){ return state.people.find(p=>p.id===id); }
@@ -779,7 +795,12 @@ function bindEvents(){
       state.people.push(person);
       pNameInput.value=''; cancelPersonBtn.style.display='none';
       render();
-      toast('인원을 추가했어요.');
+      toast('인원을 추가했어요.', async ()=>{
+        await deletePersonDB(person.id);
+        state.people = state.people.filter(p=>p.id!==person.id);
+        render();
+        toast(`${person.name} 추가를 취소했어요.`);
+      });
     };
 
     // 체크박스 - 개별
@@ -920,12 +941,20 @@ function bindEvents(){
         e.stopPropagation();
         const rawId = b.dataset.delPerson;
         const id = isNaN(rawId) ? rawId : Number(rawId);
+        const deleted = state.people.find(p=>p.id==rawId);
         await deletePersonDB(id);
         await clearMentorRefDB(id);
         state.people = state.people.filter(p=>p.id!=rawId);
         state.people.forEach(p=>{ if(p.mentorId==rawId) p.mentorId=null; });
         state._selectedPeople.forEach(sid=>{ if(String(sid)===rawId) state._selectedPeople.delete(sid); });
         render();
+        if(deleted) toast(`${deleted.name}을(를) 삭제했어요.`, async ()=>{
+          const restored = {...deleted, id:undefined};
+          await addPersonDB(restored);
+          state.people.push(restored);
+          render();
+          toast(`${deleted.name}을(를) 복원했어요.`);
+        });
       };
     });
 
@@ -957,13 +986,22 @@ function bindEvents(){
       document.getElementById('bulkDeleteBtn').onclick = async()=>{
         const targets = state.people.filter(p=>state._selectedPeople.has(p.id));
         if(!confirm(`선택한 ${targets.length}명을 삭제할까요?`)) return;
+        const snapshot = targets.map(p=>({...p}));
         for(const p of targets){
           await sb.from('people').delete().eq('id',p.id);
           state.people = state.people.filter(x=>x.id!==p.id);
         }
         state._selectedPeople.clear();
         render();
-        toast(`${targets.length}명을 삭제했어요.`);
+        toast(`${targets.length}명을 삭제했어요.`, async ()=>{
+          for(const p of snapshot){
+            const restored = {...p, id:undefined};
+            await addPersonDB(restored);
+            state.people.push(restored);
+          }
+          render();
+          toast(`${snapshot.length}명을 복원했어요.`);
+        });
       };
     }
 
