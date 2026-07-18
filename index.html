@@ -420,7 +420,7 @@ function renderPersonRow(p, isMentee){
     <option value="">-</option>
     ${mentors.filter(m=>m.id!==p.id).map(m=>`<option value="${m.id}" ${p.mentorId===m.id?'selected':''}>${m.name}</option>`).join('')}
   </select>`;
-  return `<div class="${rowClass}" data-pid="${p.id}" style="grid-template-columns:28px 1fr auto auto auto auto auto auto;">
+  return `<div class="${rowClass}" data-pid="${p.id}" style="grid-template-columns:28px 1fr auto auto auto auto auto auto auto;">
     <input type="checkbox" class="p-check" data-id="${p.id}" ${sel?'checked':''} style="cursor:pointer;width:15px;height:15px;">
     <span class="prow-name">
       ${isMentee?'<span class="mentee-indent">└</span>':''}
@@ -518,7 +518,7 @@ function renderPeopleTab(){
         </label>`:''}
       </div>
       ${state.people.length===0?'<div class="empty">아직 등록된 인원이 없어요.</div>':`
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 10px;display:grid;grid-template-columns:28px 1fr auto auto auto auto auto auto;gap:8px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 10px;display:grid;grid-template-columns:28px 1fr auto auto auto auto auto auto auto;gap:8px;">
         <span></span><span>이름</span><span>성별</span><span>카테고리</span><span>팀</span><span>레벨</span><span>나이</span><span>담당멘토</span><span></span>
       </div>
       <div id="peopleList">${rows}</div>`}
