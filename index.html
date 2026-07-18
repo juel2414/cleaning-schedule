@@ -58,22 +58,24 @@
   }
   .hero-text .brand{font-size:24px;font-weight:800;letter-spacing:-0.5px;text-shadow:0 1px 6px rgba(0,0,0,0.4);}
   .hero-text .sub{font-size:12.5px;opacity:0.88;margin-top:2px;text-shadow:0 1px 4px rgba(0,0,0,0.3);}
-  .nukki-fab{
-    position:fixed;bottom:20px;right:16px;z-index:45;
-    display:flex;flex-direction:column;align-items:center;
-    cursor:pointer;user-select:none;
-    filter:drop-shadow(0 4px 12px rgba(0,0,0,0.25));
-    transition:transform 0.15s;
+  .nukki-select-btn{
+    display:flex;flex-direction:column;align-items:center;cursor:pointer;
+    user-select:none;transition:transform 0.15s;
+    filter:drop-shadow(0 2px 6px rgba(0,0,0,0.18));
   }
-  .nukki-fab:hover{transform:scale(1.06);}
-  .nukki-fab:active{transform:scale(0.96);}
-  .nukki-fab img{width:72px;height:auto;display:block;}
-  .nukki-fab .fab-label{
+  .nukki-select-btn:hover{transform:scale(1.07);}
+  .nukki-select-btn:active{transform:scale(0.95);}
+  .nukki-select-btn img{width:54px;height:auto;display:block;}
+  .nukki-select-btn .sel-label{
     background:var(--moss-dark);color:#fff;font-size:10px;font-weight:700;
-    padding:3px 8px;border-radius:20px;margin-top:-4px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.2);white-space:nowrap;
+    padding:2px 8px;border-radius:20px;margin-top:-6px;
+    white-space:nowrap;
   }
-  .nukki-fab.all-selected .fab-label{background:var(--clay);}
+  .nukki-select-btn.all-selected .sel-label{background:var(--clay);}
+  .nukki-deco{height:64px;width:auto;display:block;
+    filter:drop-shadow(0 2px 8px rgba(0,0,0,0.15));
+    margin-right:-8px;
+  }
   .app-inner{padding:0 20px;}
   .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px;}
   .brand{font-size:22px;font-weight:700;letter-spacing:-0.3px;}
@@ -519,8 +521,15 @@ function renderPeopleTab(){
     </div>
     <div class="card" style="padding-bottom:${sel.size>0?'60px':'18px'}">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <h2 style="margin:0">등록된 인원 (${state.people.length}명)</h2>
-        ${state.people.length>0?`<span style="font-size:12px;color:var(--muted);">${allChecked?'전체 선택됨':'선택 가능'}</span>`:''}
+        <div style="display:flex;align-items:flex-end;gap:6px;">
+          <img class="nukki-deco" src="./images/누끼/주님한분2-Photoroom.png" alt="">
+          <h2 style="margin:0">등록된 인원 (${state.people.length}명)</h2>
+        </div>
+        ${state.people.length>0?`
+        <div class="nukki-select-btn${allChecked?' all-selected':''}" id="nukkiFab">
+          <img src="./images/누끼/주님한분1-Photoroom.png" alt="전체 선택">
+          <span class="sel-label">${allChecked?'선택 해제':'전체 선택'}</span>
+        </div>`:''}
       </div>
       ${state.people.length===0?'<div class="empty">아직 등록된 인원이 없어요.</div>':`
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 10px;display:grid;grid-template-columns:28px 1fr auto auto auto auto auto auto auto;gap:8px;">
@@ -529,11 +538,6 @@ function renderPeopleTab(){
       <div id="peopleList">${rows}</div>`}
     </div>
     ${bulkBar}
-    ${state.people.length>0?`
-    <div class="nukki-fab${allChecked?' all-selected':''}" id="nukkiFab">
-      <img src="./images/누끼/주님한분1-Photoroom.png" alt="전체 선택">
-      <span class="fab-label">${allChecked?'선택 해제':'전체 선택'}</span>
-    </div>`:''}
   `;
 }
 
