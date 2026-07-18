@@ -84,6 +84,14 @@
   .filter-tab[data-f="mentor"].active{background:var(--amber);border-color:var(--amber);color:#fff;}
   .filter-tab[data-f="mentee"].active{background:var(--clay);border-color:var(--clay);color:#fff;}
   .section-label{font-size:11px;font-weight:700;color:var(--muted);padding:10px 10px 4px;letter-spacing:0.5px;text-transform:uppercase;}
+  .section-mgr{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .section-mgr-label{font-size:11px;font-weight:700;color:var(--muted);margin-right:2px;}
+  .section-chip{display:inline-flex;align-items:center;gap:3px;background:var(--surface);border:1.5px solid var(--line);border-radius:20px;padding:3px 10px 3px 12px;font-size:12px;}
+  .section-chip-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;padding:0 0 0 2px;line-height:1;}
+  .section-chip-del:hover{color:#b5453a;}
+  .section-add-btn{background:none;border:1.5px dashed var(--line);border-radius:20px;padding:3px 12px;font-size:12px;cursor:pointer;color:var(--muted);}
+  .section-add-btn:hover{border-color:var(--moss);color:var(--moss-dark);}
+  #sectionAddForm{display:none;align-items:center;gap:6px;margin-bottom:10px;}
   .app-inner{padding:0 20px;}
   .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px;}
   .brand{font-size:22px;font-weight:700;letter-spacing:-0.3px;}
@@ -199,8 +207,10 @@ const state = {
   loaded: false,
   _selectedPeople: new Set(),
   _editingPersonId: null,
-  _peopleFilter: 'all'
+  _peopleFilter: 'all',
+  _sections: JSON.parse(localStorage.getItem('people_sections') || '["상황실","중고등","초등"]')
 };
+function saveSections(){ localStorage.setItem('people_sections', JSON.stringify(state._sections)); }
 
 function dbPersonToState(p){
   return { id:p.id, name:p.name, gender:p.gender, category:p.category, team:p.team||'', level:p.level, mentorId:p.mentor_id, age:p.age||null };
@@ -359,27 +369,34 @@ function renderPeopleTab(){
   const f = state._peopleFilter;
   const sel = state._selectedPeople;
 
-  const counts = {
-    all: state.people.length,
-    worker: state.people.filter(p=>p.category==='worker').length,
-    junggo: state.people.filter(p=>p.team==='중고등'&&p.category!=='worker').length,
-    chodeung: state.people.filter(p=>p.team==='초등'&&p.category!=='worker').length,
-  };
+  const counts = { all: state.people.length, worker: state.people.filter(p=>p.category==='worker').length };
+  state._sections.forEach(s=>{ counts[s] = state.people.filter(p=>p.team===s&&p.category!=='worker').length; });
 
   const filterBar = `<div class="filter-tabs">
     <button class="filter-tab${f==='all'?' active':''}" data-f="all">전체 ${counts.all}</button>
     <button class="filter-tab${f==='worker'?' active':''}" data-f="worker">사역자 ${counts.worker}</button>
-    <button class="filter-tab${f==='junggo'?' active':''}" data-f="junggo">중고등 ${counts.junggo}</button>
-    <button class="filter-tab${f==='chodeung'?' active':''}" data-f="chodeung">초등 ${counts.chodeung}</button>
+    ${state._sections.map(s=>`<button class="filter-tab${f===s?' active':''}" data-f="${s}">${s} ${counts[s]||0}</button>`).join('')}
   </div>`;
 
-  // 표시할 인원 필터링
+  // 섹션 관리 UI
+  const sectionMgr = `
+  <div class="section-mgr">
+    <span class="section-mgr-label">섹션</span>
+    ${state._sections.map(s=>`<span class="section-chip">${s}<button class="section-chip-del" data-del-section="${s}">✕</button></span>`).join('')}
+    <button class="section-add-btn" id="sectionAddBtn">+ 추가</button>
+  </div>
+  <div id="sectionAddForm" style="display:none;gap:6px;align-items:center;margin-bottom:10px;">
+    <input type="text" id="sectionNameInput" placeholder="섹션 이름" style="flex:1;max-width:160px;">
+    <button class="btn small" id="sectionConfirmBtn">확인</button>
+    <button class="btn ghost small" id="sectionCancelBtn">취소</button>
+  </div>`;
+
+  // 표시할 인원
   const visible = f==='all' ? state.people
     : f==='worker' ? state.people.filter(p=>p.category==='worker')
-    : f==='junggo' ? state.people.filter(p=>p.team==='중고등'&&p.category!=='worker')
-    : state.people.filter(p=>p.team==='초등'&&p.category!=='worker');
+    : state.people.filter(p=>p.team===f&&p.category!=='worker');
 
-  // 그룹: 팀별 섹션
+  // 팀별 섹션 렌더링
   let rows = '';
   const usedIds = new Set();
   if(f==='all'){
@@ -388,16 +405,13 @@ function renderPeopleTab(){
       rows += `<div class="section-label">🔧 사역자</div>`;
       workers.forEach(p=>{ usedIds.add(p.id); rows += renderPersonRow(p, false); });
     }
-    const junggo = state.people.filter(p=>p.team==='중고등'&&p.category!=='worker');
-    if(junggo.length>0){
-      rows += `<div class="section-label">🏫 중고등 (${junggo.length}명)</div>`;
-      junggo.forEach(p=>{ usedIds.add(p.id); rows += renderPersonRow(p, false); });
-    }
-    const chodeung = state.people.filter(p=>p.team==='초등'&&p.category!=='worker');
-    if(chodeung.length>0){
-      rows += `<div class="section-label">🎒 초등 (${chodeung.length}명)</div>`;
-      chodeung.forEach(p=>{ usedIds.add(p.id); rows += renderPersonRow(p, false); });
-    }
+    state._sections.forEach(s=>{
+      const group = state.people.filter(p=>p.team===s&&p.category!=='worker');
+      if(group.length>0){
+        rows += `<div class="section-label">📌 ${s} (${group.length}명)</div>`;
+        group.forEach(p=>{ usedIds.add(p.id); rows += renderPersonRow(p, false); });
+      }
+    });
     const etc = state.people.filter(p=>!usedIds.has(p.id));
     if(etc.length>0){
       rows += `<div class="section-label">👤 기타</div>`;
@@ -460,6 +474,7 @@ function renderPeopleTab(){
     </div>
     <div class="card" style="padding-bottom:${sel.size>0?'60px':'18px'}">
       ${filterBar}
+      ${sectionMgr}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <h2 style="margin:0">등록된 인원 (${state.people.length}명)</h2>
         ${state.people.length>0?`
@@ -781,6 +796,38 @@ function bindEvents(){
     document.querySelectorAll('.filter-tab').forEach(btn=>{
       btn.onclick = ()=>{ state._peopleFilter = btn.dataset.f; render(); };
     });
+
+    // 섹션 삭제
+    document.querySelectorAll('.section-chip-del').forEach(btn=>{
+      btn.onclick = ()=>{
+        const s = btn.dataset.delSection;
+        if(!confirm(`"${s}" 섹션을 삭제할까요?\n(인원의 팀 정보는 유지되며 기타 섹션으로 이동해요)`)) return;
+        state._sections = state._sections.filter(x=>x!==s);
+        saveSections();
+        if(state._peopleFilter===s) state._peopleFilter='all';
+        render();
+      };
+    });
+
+    // 섹션 추가
+    const sectionAddBtn = document.getElementById('sectionAddBtn');
+    const sectionAddForm = document.getElementById('sectionAddForm');
+    const sectionNameInput = document.getElementById('sectionNameInput');
+    if(sectionAddBtn) sectionAddBtn.onclick = ()=>{
+      sectionAddForm.style.display='flex';
+      sectionNameInput.focus();
+    };
+    const confirmAdd = ()=>{
+      const name = sectionNameInput.value.trim();
+      if(!name) return;
+      if(state._sections.includes(name)){ toast('이미 있는 섹션이에요.'); return; }
+      state._sections.push(name);
+      saveSections();
+      render();
+    };
+    document.getElementById('sectionConfirmBtn').onclick = confirmAdd;
+    document.getElementById('sectionCancelBtn').onclick = ()=>{ sectionAddForm.style.display='none'; };
+    sectionNameInput.onkeydown = (e)=>{ if(e.key==='Enter') confirmAdd(); if(e.key==='Escape') sectionAddForm.style.display='none'; };
 
     const nukkiFab = document.getElementById('nukkiFab');
     if(nukkiFab) nukkiFab.onclick = ()=>{
