@@ -57,28 +57,41 @@
   }
   .app{max-width:960px;margin:0 auto;padding:0 0 80px;}
 
-  /* ── HERO ── */
+  /* ── HERO SLIDESHOW ── */
   .hero{
-    width:100%;height:260px;position:relative;overflow:visible;
+    width:100%;height:280px;position:relative;overflow:hidden;
     border-radius:0 0 28px 28px;margin-bottom:28px;
   }
-  .hero-img{
-    position:absolute;inset:0;border-radius:0 0 28px 28px;overflow:hidden;
+  .hero-slide{
+    position:absolute;inset:0;opacity:0;
+    transition:opacity 1.2s ease;
   }
-  .hero-img img{width:100%;height:100%;object-fit:cover;object-position:center 22%;display:block;}
-  .hero-img::after{
+  .hero-slide.active{opacity:1;}
+  .hero-slide img{
+    width:100%;height:100%;object-fit:cover;object-position:center 30%;display:block;
+  }
+  .hero-slide::after{
     content:'';position:absolute;inset:0;
-    background:linear-gradient(110deg,rgba(8,14,50,0.78) 0%,rgba(8,14,50,0.45) 55%,rgba(8,14,50,0.05) 100%);
+    background:linear-gradient(110deg,rgba(8,14,50,0.72) 0%,rgba(8,14,50,0.38) 55%,rgba(8,14,50,0.08) 100%);
   }
-  .hero-text{position:absolute;bottom:26px;left:28px;z-index:2;color:#fff;}
+  .hero-text{position:absolute;bottom:28px;left:28px;z-index:2;color:#fff;}
   .hero-text .brand{font-size:26px;font-weight:900;letter-spacing:-0.8px;text-shadow:0 2px 10px rgba(0,0,0,0.5);}
   .hero-text .sub{font-size:12.5px;opacity:0.82;margin-top:5px;text-shadow:0 1px 5px rgba(0,0,0,0.4);max-width:260px;line-height:1.5;}
+  .hero-dots{
+    position:absolute;bottom:14px;right:20px;z-index:3;
+    display:flex;gap:5px;
+  }
+  .hero-dot{
+    width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.4);
+    cursor:pointer;transition:background .3s,transform .3s;
+  }
+  .hero-dot.active{background:#fff;transform:scale(1.3);}
   .hero-nukki-back{
-    position:absolute;bottom:0;right:6%;z-index:1;height:230px;width:auto;
+    position:absolute;bottom:0;right:6%;z-index:1;height:250px;width:auto;
     filter:drop-shadow(-3px 0 18px rgba(8,14,50,0.5));pointer-events:none;opacity:0.65;
   }
   .hero-nukki-front{
-    position:absolute;bottom:0;right:18%;z-index:2;height:250px;width:auto;
+    position:absolute;bottom:0;right:18%;z-index:2;height:265px;width:auto;
     filter:drop-shadow(-4px 0 24px rgba(8,14,50,0.6));pointer-events:none;
   }
 
@@ -384,13 +397,21 @@ function render(){
   if(!state.loaded){ root.innerHTML = '<div class="empty">불러오는 중...</div>'; return; }
   root.innerHTML = `
     <div class="hero">
-      <div class="hero-img">
-        <img src="./images/원본/IMG_7110.JPG" alt="청소 당번표">
-      </div>
+      <div class="hero-slide active"><img src="./images/원본/IMG_7110.JPG" alt=""></div>
+      <div class="hero-slide"><img src="./images/원본/주님한분3.JPG" alt=""></div>
+      <div class="hero-slide"><img src="./images/원본/주님한분4.JPG" alt=""></div>
+      <div class="hero-slide"><img src="./images/원본/주님한분5.JPG" alt=""></div>
+      <div class="hero-slide"><img src="./images/원본/중력2.JPG" alt=""></div>
+      <div class="hero-slide"><img src="./images/원본/DSC02220.JPG" alt=""></div>
+      <div class="hero-slide"><img src="./images/원본/DSC02130.JPG" alt=""></div>
+      <div class="hero-slide"><img src="./images/원본/S3_01036.JPG" alt=""></div>
+      <div class="hero-slide"><img src="./images/원본/S3_01057.JPG" alt=""></div>
+      <div class="hero-slide"><img src="./images/원본/주님 한 분만으로.JPG" alt=""></div>
       <div class="hero-text">
         <div class="brand">청소 당번표 관리</div>
         <div class="sub">인원과 구역을 등록하면 조건에 맞춰 매달 배정표를 자동으로 만들어드려요.</div>
       </div>
+      <div class="hero-dots" id="heroDots"></div>
       <img class="hero-nukki-back" src="./images/누끼/중력2-Photoroom.png" alt="">
       <img class="hero-nukki-front" src="./images/누끼/주님한분4-Photoroom.png" alt="">
     </div>
@@ -410,6 +431,35 @@ function render(){
   if(state.tab==='generate') body.innerHTML = renderGenerateTab();
   if(state.tab==='history') body.innerHTML = renderHistoryTab();
   bindEvents();
+  initHeroSlideshow();
+}
+function initHeroSlideshow(){
+  const slides = document.querySelectorAll('.hero-slide');
+  const dotsEl = document.getElementById('heroDots');
+  if(!slides.length || !dotsEl) return;
+  // clear previous interval
+  if(window._heroTimer) clearInterval(window._heroTimer);
+  let cur = 0;
+  // build dots
+  dotsEl.innerHTML = '';
+  slides.forEach((_,i)=>{
+    const d = document.createElement('div');
+    d.className = 'hero-dot' + (i===0?' active':'');
+    d.onclick = ()=>{ goTo(i); restartTimer(); };
+    dotsEl.appendChild(d);
+  });
+  function goTo(n){
+    slides[cur].classList.remove('active');
+    dotsEl.children[cur].classList.remove('active');
+    cur = (n + slides.length) % slides.length;
+    slides[cur].classList.add('active');
+    dotsEl.children[cur].classList.add('active');
+  }
+  function restartTimer(){
+    clearInterval(window._heroTimer);
+    window._heroTimer = setInterval(()=>goTo(cur+1), 4000);
+  }
+  restartTimer();
 }
 function tabBtn(id,label){
   return `<button class="${state.tab===id?'active':''}" data-tab="${id}">${label}</button>`;
