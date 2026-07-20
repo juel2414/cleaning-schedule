@@ -728,10 +728,8 @@ function renderAreasTab(){
         </div>
       </td>
       <td>
-        <div class="stepper">
-          <button data-step-area="${a.id}" data-step-field="difficulty" data-step-dir="-1">−</button>
-          <span class="val">${a.difficulty}<span style="color:var(--muted);font-size:10px;">/5</span></span>
-          <button data-step-area="${a.id}" data-step-field="difficulty" data-step-dir="1">+</button>
+        <div class="indoor-toggle">
+          ${[1,2,3,4,5].map(n=>`<button class="${a.difficulty===n?'active':''}" data-diff-area="${a.id}" data-diff-val="${n}">${n}</button>`).join('')}
         </div>
       </td>
       <td>
@@ -1328,6 +1326,19 @@ function bindEvents(){
         const max = field==='difficulty' ? 5 : 99;
         const newVal = Math.min(max, Math.max(min, (area[field]||1) + dir));
         area[field] = newVal;
+        await updateAreaDB(area);
+        render();
+      };
+    });
+
+    // 난이도 토글
+    document.querySelectorAll('[data-diff-area]').forEach(b=>{
+      b.onclick = async ()=>{
+        const id = b.dataset.diffArea;
+        const val = parseInt(b.dataset.diffVal);
+        const area = state.areas.find(a=>String(a.id)===String(id));
+        if(!area) return;
+        area.difficulty = val;
         await updateAreaDB(area);
         render();
       };
