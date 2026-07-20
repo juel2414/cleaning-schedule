@@ -729,11 +729,6 @@ function renderAreasTab(){
       </td>
       <td>
         <div class="indoor-toggle">
-          ${[1,2,3,4,5].map(n=>`<button class="${a.difficulty===n?'active':''}" data-diff-area="${a.id}" data-diff-val="${n}">${n}</button>`).join('')}
-        </div>
-      </td>
-      <td>
-        <div class="indoor-toggle">
           <button class="${a.isIndoor!==false?'active':''}" data-indoor-area="${a.id}" data-indoor-val="true">실내</button>
           <button class="${a.isIndoor===false?'active':''}" data-indoor-area="${a.id}" data-indoor-val="false">야외</button>
         </div>
@@ -768,7 +763,6 @@ function renderAreasTab(){
       <div class="row">
         <label class="f">구역명<input type="text" id="a_name" placeholder="예: 화장실"></label>
         <label class="f">필요 인원<input type="number" id="a_capacity" value="1" min="1" style="width:70px"></label>
-        <label class="f">난이도<input type="number" id="a_difficulty" value="1" min="1" max="5" style="width:70px"></label>
         <label class="f">구역 레벨<input type="number" id="a_required_level" value="0" min="0" style="width:70px"></label>
         <label class="f">구분<select id="a_indoor">
           <option value="true">실내</option>
@@ -783,10 +777,26 @@ function renderAreasTab(){
       </div>
     </div>
     <div class="card" style="overflow-x:auto;">
-      <h2>등록된 구역 (${state.areas.length}곳)</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+        <h2 style="margin:0;">등록된 구역 (${state.areas.length}곳)</h2>
+        ${(()=>{
+          const totalPeople = state.people.filter(p=>p.category!=='worker').length;
+          const totalCap = state.areas.reduce((s,a)=>s+a.capacity,0);
+          const diff = totalCap - totalPeople;
+          const color = diff>=0 ? 'var(--navy)' : 'var(--red)';
+          const diffLabel = diff>0 ? `+${diff} 여유` : diff<0 ? `${diff} 부족` : '딱 맞음';
+          return `<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:10px;padding:8px 14px;">
+            <span style="font-size:13px;color:var(--muted);">등록 인원</span>
+            <span style="font-size:18px;font-weight:800;color:var(--ink);">${totalPeople}명</span>
+            <span style="font-size:13px;color:var(--muted);">구역 정원 합계</span>
+            <span style="font-size:18px;font-weight:800;color:var(--ink);">${totalCap}명</span>
+            <span style="font-size:12px;font-weight:700;color:${color};background:${diff>=0?'var(--blue-light)':'var(--red-light)'};padding:2px 8px;border-radius:20px;">${diffLabel}</span>
+          </div>`;
+        })()}
+      </div>
       ${state.areas.length===0 ? '<div class="empty">아직 등록된 구역이 없어요.</div>' : `
       <table>
-        <thead><tr><th>구역명</th><th>필요 인원</th><th>난이도</th><th>구분</th><th>성별</th><th>고정인원</th><th>구역 레벨</th><th></th></tr></thead>
+        <thead><tr><th>구역명</th><th>필요 인원</th><th>구분</th><th>성별</th><th>고정인원</th><th>구역 레벨</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`}
     </div>
@@ -842,6 +852,12 @@ function renderDraftBoard(entry, editable){
   }).join('');
 
   const unassigned = state.people.filter(p=>!Object.values(entry.assignments).flat().includes(p.id));
+  const assignedAll = Object.values(entry.assignments).flat();
+  const totalPeople = state.people.filter(p=>p.category!=='worker').length;
+  const assignedCount = state.people.filter(p=>p.category!=='worker' && assignedAll.includes(p.id)).length;
+  const totalCapacity = state.areas.reduce((s,a)=>s+a.capacity,0);
+  const pct = totalPeople>0 ? Math.round(assignedCount/totalPeople*100) : 0;
+  const barColor = pct===100 ? 'var(--navy)' : pct>=80 ? 'var(--blue)' : 'var(--red)';
 
   return `
     <div class="card">
@@ -854,6 +870,20 @@ function renderDraftBoard(entry, editable){
           ${editable && entry.status==='draft' ? `<button class="btn ghost" id="regenBtn">다시 생성</button><button class="btn" id="confirmBtn">확정 저장</button>` : ''}
           <button class="btn ghost" id="exportImgBtn">이미지로 저장</button>
         </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border-radius:10px;margin-bottom:12px;">
+        <div style="font-size:22px;font-weight:800;color:${barColor};line-height:1;">${assignedCount}<span style="font-size:13px;font-weight:500;color:var(--muted);">/${totalPeople}명</span></div>
+        <div style="flex:1;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
+            <span>배정 인원</span>
+            <span>구역 정원 합계 ${totalCapacity}명</span>
+          </div>
+          <div style="height:7px;border-radius:4px;background:var(--line);overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${barColor};border-radius:4px;transition:width .4s;"></div>
+          </div>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:${barColor};">${pct}%</div>
+        ${unassigned.length>0 ? `<div style="font-size:12px;color:var(--red);font-weight:600;">미배정 ${unassigned.filter(p=>p.category!=='worker').length}명</div>` : '<div style="font-size:12px;color:var(--navy);font-weight:600;">전원 배정 완료 ✓</div>'}
       </div>
       ${entry.notes && entry.notes.length ? `<div class="note">${entry.notes.join('<br>')}</div>` : ''}
       <div id="captureArea">
@@ -1305,7 +1335,7 @@ function bindEvents(){
       const name = document.getElementById('a_name').value.trim();
       if(!name){ toast('구역명을 입력해주세요.'); return; }
       const capacity = parseInt(document.getElementById('a_capacity').value)||1;
-      const difficulty = parseInt(document.getElementById('a_difficulty').value)||1;
+      const difficulty = 1;
       const genderFilter = document.getElementById('a_gender').value||'all';
       const isIndoor = document.getElementById('a_indoor').value !== 'false';
       const requiredLevel = parseInt(document.getElementById('a_required_level').value)||0;
