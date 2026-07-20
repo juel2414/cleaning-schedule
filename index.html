@@ -1355,11 +1355,85 @@ async function handleRosterImage(file){
     const response = await fetch('https://pvuriqyiyghjuprewkwj.supabase.co/functions/v1/analyze-image', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ base64, mediaType, mode:'schedule' })
+      body: JSON.stringify({ base64, mediaType, mode:'auto' })
     });
     const data = await response.json();
 
-    // 구역
+    // ── 청소당번표 형식 ──────────────────────────────────────
+    if(data.type === 'schedule' || (Array.isArray(data.rows) && data.rows.length > 0)){
+      const rows = data.rows || [];
+      const title = data.title || '';
+      statusEl.innerHTML = `<strong>청소 당번표 추출 완료!</strong> ${rows.length}개 구역`;
+      if(!previewEl) return;
+      const tableRows = rows.map(r=>`
+        <tr>
+          <td style="font-weight:600">${r.area||''}</td>
+          <td>${(r.assignees||[]).join(', ')}</td>
+          <td style="color:var(--navy)">${r.inspector||'-'}</td>
+        </tr>`).join('');
+      const cancelBtn = `<button class="btn ghost small" id="cancelImportBtn" style="margin-bottom:10px;">✕ 취소하기</button>`;
+      previewEl.innerHTML = `${cancelBtn}
+        <div class="card" style="padding:16px;">
+          ${title ? `<h2 style="margin-bottom:12px;">${title}</h2>` : ''}
+          <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>청소구역</th><th>담당자</th><th>점검자</th></tr></thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+            <button class="btn" id="saveScheduleBtn">배정표로 저장하기</button>
+            <button class="btn ghost small" id="extractPeopleFromScheduleBtn">인원만 명단에 추가</button>
+          </div>
+        </div>`;
+      document.getElementById('cancelImportBtn').onclick = ()=>{ previewEl.innerHTML=''; statusEl.textContent=''; };
+
+      // 배정표로 저장
+      document.getElementById('saveScheduleBtn').onclick = async ()=>{
+        const btn = document.getElementById('saveScheduleBtn');
+        btn.disabled = true; btn.textContent = '저장 중...';
+        // 구역 매칭 & 배정 맵 생성
+        const assignments = {};
+        for(const r of rows){
+          let area = state.areas.find(a=>a.name===r.area);
+          if(!area){
+            const newArea = {name:r.area, capacity:(r.assignees||[]).length||1, difficulty:1, genderFilter:'all', fixedPeople:[]};
+            await addAreaDB(newArea); state.areas.push(newArea); area = newArea;
+          }
+          const pids = (r.assignees||[]).map(name=>{
+            const p = state.people.find(x=>x.name===name);
+            return p ? p.id : null;
+          }).filter(Boolean);
+          if(area.id) assignments[area.id] = pids;
+        }
+        const month = new Date().toISOString().slice(0,7);
+        const draft = { month, assignments, notes:[], status:'confirmed' };
+        await createDraftDB(draft);
+        state.draft = draft;
+        render();
+        toast('배정표를 저장했어요.');
+      };
+
+      // 인원만 추가
+      document.getElementById('extractPeopleFromScheduleBtn').onclick = async ()=>{
+        const btn = document.getElementById('extractPeopleFromScheduleBtn');
+        btn.disabled = true; btn.textContent = '추가 중...';
+        const allNames = [...new Set(rows.flatMap(r=>[...(r.assignees||[]), r.inspector||''].filter(n=>n && n.length>=2)))];
+        let added = 0;
+        for(const name of allNames){
+          if(!state.people.find(p=>p.name===name)){
+            const person = {name, gender:'m', category:'normal', team:'', level:1, mentorId:null, age:null};
+            await addPersonDB(person); state.people.push(person); added++;
+          }
+        }
+        btn.textContent = `✓ ${added}명 추가 완료`;
+        toast(`${added}명을 추가했어요.`);
+        render();
+      };
+      return;
+    }
+
+    // ── 명렬표(인원 목록) 형식 ─────────────────────────────────
     const areas = Array.isArray(data.areas) ? data.areas.filter(a=>a.name) : [];
     const newAreas = areas.filter(a=>!state.areas.some(x=>x.name===a.name));
     const dupAreas = areas.filter(a=>state.areas.some(x=>x.name===a.name));
