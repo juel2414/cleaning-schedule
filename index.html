@@ -301,6 +301,7 @@ const state = {
   _selectedPeople: new Set(),
   _editingPersonId: null,
   _peopleFilter: 'all',
+  _peopleSort: 'default',
   _sections: JSON.parse(localStorage.getItem('people_sections') || '["상황실","중고등","초등"]')
 };
 function saveSections(){ localStorage.setItem('people_sections', JSON.stringify(state._sections)); }
@@ -511,7 +512,12 @@ function renderPersonRow(p, isMentee){
     <span class="editable-cell" data-toggle="age" data-id="${p.id}" title="클릭해서 수정">
       <span style="font-size:12px;color:${p.age?'var(--ink)':'var(--muted)'};">${p.age?p.age+'세':'-'}</span><span class="edit-hint">✎</span>
     </span>
-    ${p.category==='mentee'||p.category==='normal'||p.category==='worker' ? mentorSel : '<span style="font-size:12px;color:var(--muted);">-</span>'}
+    ${p.category==='mentor' ? (()=>{
+      const unassigned = state.people.filter(m=>m.category==='mentee' && (!m.mentorId));
+      return unassigned.length===0
+        ? '<span style="font-size:11px;color:var(--muted);">멘티없음</span>'
+        : `<select data-assign-mentee-to="${p.id}" style="font-size:12px;padding:3px 5px;border:1px solid var(--line);border-radius:5px;background:#fef3c7;color:#b45309;font-weight:600;"><option value="">+ 멘티 연결</option>${unassigned.map(m=>`<option value="${m.id}">${m.name}</option>`).join('')}</select>`;
+    })() : p.category==='mentee' ? mentorSel : '<span style="font-size:12px;color:var(--muted);">-</span>'}
     <button class="btn ghost small danger" data-del-person="${p.id}" style="padding:3px 8px;font-size:11px;">삭제</button>
   </div>`;
 }
@@ -524,10 +530,18 @@ function renderPeopleTab(){
   const counts = { all: state.people.length, worker: state.people.filter(p=>p.category==='worker').length };
   state._sections.forEach(s=>{ counts[s] = state.people.filter(p=>p.team===s&&p.category!=='worker').length; });
 
-  const filterBar = `<div class="filter-tabs">
-    <button class="filter-tab${f==='all'?' active':''}" data-f="all">전체 ${counts.all}</button>
-    <button class="filter-tab${f==='worker'?' active':''}" data-f="worker">사역자 ${counts.worker}</button>
-    ${state._sections.map(s=>`<button class="filter-tab${f===s?' active':''}" data-f="${s}">${s} ${counts[s]||0}</button>`).join('')}
+  const s0 = state._peopleSort;
+  const filterBar = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+    <div class="filter-tabs" style="margin-bottom:0;flex:1;">
+      <button class="filter-tab${f==='all'?' active':''}" data-f="all">전체 ${counts.all}</button>
+      <button class="filter-tab${f==='worker'?' active':''}" data-f="worker">사역자 ${counts.worker}</button>
+      ${state._sections.map(s=>`<button class="filter-tab${f===s?' active':''}" data-f="${s}">${s} ${counts[s]||0}</button>`).join('')}
+    </div>
+    <div class="indoor-toggle" style="flex-shrink:0;">
+      <button class="${s0==='default'?'active':''}" data-people-sort="default">기본순</button>
+      <button class="${s0==='level-desc'?'active':''}" data-people-sort="level-desc">레벨 ↓</button>
+      <button class="${s0==='level-asc'?'active':''}" data-people-sort="level-asc">레벨 ↑</button>
+    </div>
   </div>`;
 
   // 섹션 관리 UI
@@ -544,22 +558,46 @@ function renderPeopleTab(){
   </div>`;
 
   // 표시할 인원
-  const visible = f==='all' ? state.people
+  function applySort(arr){
+    if(state._peopleSort==='level-desc') return [...arr].sort((a,b)=>b.level-a.level);
+    if(state._peopleSort==='level-asc') return [...arr].sort((a,b)=>a.level-b.level);
+    return arr;
+  }
+  const visible = applySort(f==='all' ? state.people
     : f==='worker' ? state.people.filter(p=>p.category==='worker')
-    : state.people.filter(p=>p.team===f&&p.category!=='worker');
+    : state.people.filter(p=>p.team===f&&p.category!=='worker'));
 
   // 성별 서브그룹 렌더링 헬퍼
   function renderWithGender(group, trackIds){
     let r = '';
+    // 멘토에 연결된 멘티는 독립 행으로 렌더하지 않고 멘토 아래에 체인으로 붙임
+    const chainedMenteeIds = new Set(
+      state.people.filter(p=>p.category==='mentee' && p.mentorId).map(p=>p.id)
+    );
+    function renderGroupChained(subgroup){
+      let gr = '';
+      subgroup.forEach(p=>{
+        if(chainedMenteeIds.has(p.id)) return;
+        if(trackIds) trackIds.add(p.id);
+        gr += renderPersonRow(p, false);
+        if(p.category==='mentor'){
+          state.people.filter(m=>m.category==='mentee' && m.mentorId===p.id).forEach(m=>{
+            if(trackIds) trackIds.add(m.id);
+            gr += renderPersonRow(m, true);
+          });
+        }
+      });
+      return gr;
+    }
     const males = group.filter(p=>p.gender==='m');
     const females = group.filter(p=>p.gender==='f');
     if(males.length>0){
       r += `<div class="gender-sublabel">🙋‍♂️ 남자 (${males.length}명)</div>`;
-      males.forEach(p=>{ if(trackIds) trackIds.add(p.id); r += renderPersonRow(p, false); });
+      r += renderGroupChained(males);
     }
     if(females.length>0){
       r += `<div class="gender-sublabel">🙋‍♀️ 여자 (${females.length}명)</div>`;
-      females.forEach(p=>{ if(trackIds) trackIds.add(p.id); r += renderPersonRow(p, false); });
+      r += renderGroupChained(females);
     }
     return r;
   }
@@ -1028,6 +1066,9 @@ function bindEvents(){
     document.querySelectorAll('.filter-tab').forEach(btn=>{
       btn.onclick = ()=>{ state._peopleFilter = btn.dataset.f; render(); };
     });
+    document.querySelectorAll('[data-people-sort]').forEach(btn=>{
+      btn.onclick = ()=>{ state._peopleSort = btn.dataset.peopleSort; render(); };
+    });
 
     // 섹션 삭제
     document.querySelectorAll('.section-chip-del').forEach(btn=>{
@@ -1130,6 +1171,21 @@ function bindEvents(){
         cell.appendChild(pop);
         const close = (ev)=>{ if(!pop.contains(ev.target)&&ev.target!==cell){ pop.remove(); document.removeEventListener('click',close); }};
         setTimeout(()=>document.addEventListener('click',close),100);
+      };
+    });
+
+    // 멘토 → 멘티 연결 select
+    document.querySelectorAll('[data-assign-mentee-to]').forEach(sel=>{
+      sel.onchange = async ()=>{
+        const mentorId = sel.dataset.assignMenteeTo;
+        const menteeId = sel.value;
+        if(!menteeId) return;
+        const mentee = state.people.find(p=>String(p.id)===String(menteeId));
+        if(!mentee) return;
+        mentee.mentorId = mentorId;
+        await updatePersonDB(mentee);
+        render();
+        toast(`${mentee.name}을(를) 멘티로 연결했어요.`);
       };
     });
 
