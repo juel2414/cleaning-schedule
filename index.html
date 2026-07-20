@@ -876,8 +876,17 @@ function generateDraft(){
   let remainingUnits = [...units];
 
   areasSorted.forEach(area=>{
-    let filled = 0;
-    let areaGender = null;
+    // 고정인원 먼저 배치
+    const fixedIds = (area.fixedPeople||[]).filter(pid=> state.people.find(p=>p.id===pid));
+    fixedIds.forEach(pid=>{
+      if(!assignments[area.id].includes(pid)) assignments[area.id].push(pid);
+      remainingUnits = remainingUnits.filter(u=>!u.members.some(m=>m.id===pid));
+    });
+
+    let filled = assignments[area.id].length;
+    // 구역 성별 제한: genderFilter('m'/'f'/'all')
+    const areaGenderReq = area.genderFilter && area.genderFilter !== 'all' ? area.genderFilter : null;
+
     // sort candidates by fairness score (least assigned first)
     remainingUnits.sort((a,b)=>unitScore(a)-unitScore(b));
     let i=0;
@@ -885,30 +894,28 @@ function generateDraft(){
       const u = remainingUnits[i];
       const size = u.members.length;
       if(filled + size > area.capacity){ i++; continue; }
-      const levelOk = u.level <= area.difficulty || area.difficulty<=1 ? true : u.members.every(m=>m.level>=area.difficulty);
-      const genderOk = areaGender===null || u.gender===areaGender;
+      const levelOk = area.difficulty<=1 || u.members.every(m=>m.level>=area.difficulty);
+      const genderOk = areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq);
       const noRepeat = u.members.every(m=> lastMap[m.id] !== area.id);
       if(levelOk && genderOk && noRepeat){
         assignments[area.id].push(...u.members.map(m=>m.id));
         filled += size;
-        areaGender = u.gender;
         remainingUnits.splice(i,1);
       } else {
         i++;
       }
     }
     if(filled < area.capacity){
-      // relax repeat rule first
+      // 반복 배정 금지 완화
       i=0;
       while(filled < area.capacity && i < remainingUnits.length){
         const u = remainingUnits[i];
         const size = u.members.length;
         if(filled + size > area.capacity){ i++; continue; }
-        const genderOk = areaGender===null || u.gender===areaGender;
+        const genderOk = areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq);
         if(genderOk){
           assignments[area.id].push(...u.members.map(m=>m.id));
           filled += size;
-          areaGender = u.gender;
           remainingUnits.splice(i,1);
           notes.push(`"${area.name}" 배정 시 연속 배정 금지 조건을 완화했어요. 확인해주세요.`);
         } else { i++; }
