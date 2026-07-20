@@ -309,7 +309,7 @@ function dbPersonToState(p){
   return { id:p.id, name:p.name, gender:p.gender, category:p.category, team:p.team||'', level:p.level, mentorId:p.mentor_id, age:p.age||null };
 }
 function dbAreaToState(a){
-  return { id:a.id, name:a.name, capacity:a.capacity, difficulty:a.difficulty };
+  return { id:a.id, name:a.name, capacity:a.capacity, difficulty:a.difficulty, genderFilter:a.gender_filter||'all', fixedPeople:a.fixed_people||[] };
 }
 function dbScheduleToState(s){
   return { id:s.id, month:s.month, assignments:s.assignments||{}, status:s.status, notes:s.notes||[], createdAt: new Date(s.created_at).getTime() };
@@ -348,11 +348,11 @@ async function updatePersonDB(p){
 }
 
 async function addAreaDB(a){
-  const {data, error} = await sb.from('areas').insert({ name:a.name, capacity:a.capacity, difficulty:a.difficulty }).select().single();
+  const {data, error} = await sb.from('areas').insert({ name:a.name, capacity:a.capacity, difficulty:a.difficulty, gender_filter:a.genderFilter||'all', fixed_people:a.fixedPeople||[] }).select().single();
   if(!error && data) a.id = data.id;
 }
 async function deleteAreaDB(id){ await sb.from('areas').delete().eq('id', id); }
-async function updateAreaDB(a){ await sb.from('areas').update({name:a.name,capacity:a.capacity,difficulty:a.difficulty}).eq('id',a.id); }
+async function updateAreaDB(a){ await sb.from('areas').update({name:a.name,capacity:a.capacity,difficulty:a.difficulty,gender_filter:a.genderFilter,fixed_people:a.fixedPeople}).eq('id',a.id); }
 
 async function createDraftDB(draft){
   const {data, error} = await sb.from('schedules').insert({
@@ -668,13 +668,38 @@ function renderPeopleTab(){
 
 // ---------- areas tab ----------
 function renderAreasTab(){
-  const rows = state.areas.map(a=>`
+  const genderLabel = v => v==='m'?'남자만':v==='f'?'여자만':'공통';
+  const rows = state.areas.map(a=>{
+    const fixed = (a.fixedPeople||[]).map(pid=>{
+      const p = state.people.find(x=>x.id===pid);
+      return p ? `<span class="chip" style="font-size:11px;padding:2px 7px;">${p.name}<button style="margin-left:4px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;" data-unfix-person="${a.id}|${pid}">✕</button></span>` : '';
+    }).join('');
+    const nonFixed = state.people.filter(p=>p.category!=='worker' && !(a.fixedPeople||[]).includes(p.id) && (a.genderFilter==='all'||p.gender===a.genderFilter));
+    const fixSelect = `<select class="area-inline" data-area-field="fixedAdd" data-area-id="${a.id}" style="font-size:11px;max-width:100px;">
+      <option value="">+ 고정인원</option>
+      ${nonFixed.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
+    </select>`;
+    return `
     <tr data-area-id="${a.id}">
-      <td>${a.name}</td>
-      <td><input type="number" class="area-inline" data-area-field="capacity" data-area-id="${a.id}" value="${a.capacity}" min="1" style="width:54px;"> 명</td>
-      <td><input type="number" class="area-inline" data-area-field="difficulty" data-area-id="${a.id}" value="${a.difficulty}" min="1" max="5" style="width:44px;"> / 5</td>
-      <td><button class="btn ghost small" data-del-area="${a.id}">삭제</button></td>
-    </tr>`).join('');
+      <td style="font-weight:600">${a.name}</td>
+      <td><input type="number" class="area-inline" data-area-field="capacity" data-area-id="${a.id}" value="${a.capacity}" min="1" style="width:50px;"> 명</td>
+      <td><input type="number" class="area-inline" data-area-field="difficulty" data-area-id="${a.id}" value="${a.difficulty}" min="1" max="5" style="width:40px;"> / 5</td>
+      <td>
+        <select class="area-inline" data-area-field="genderFilter" data-area-id="${a.id}" style="font-size:12px;">
+          <option value="all" ${a.genderFilter==='all'?'selected':''}>공통</option>
+          <option value="m" ${a.genderFilter==='m'?'selected':''}>남자만</option>
+          <option value="f" ${a.genderFilter==='f'?'selected':''}>여자만</option>
+        </select>
+      </td>
+      <td style="min-width:160px;">
+        <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+          ${fixed}
+          ${fixSelect}
+        </div>
+      </td>
+      <td><button class="btn ghost small danger" data-del-area="${a.id}">삭제</button></td>
+    </tr>`;
+  }).join('');
   return `
     <div class="card">
       <h2>구역 추가</h2>
@@ -683,14 +708,19 @@ function renderAreasTab(){
         <label class="f">구역명<input type="text" id="a_name" placeholder="예: 화장실"></label>
         <label class="f">필요 인원<input type="number" id="a_capacity" value="1" min="1" style="width:70px"></label>
         <label class="f">난이도<input type="number" id="a_difficulty" value="1" min="1" max="5" style="width:70px"></label>
+        <label class="f">성별<select id="a_gender">
+          <option value="all">공통</option>
+          <option value="m">남자만</option>
+          <option value="f">여자만</option>
+        </select></label>
         <button class="btn" id="addAreaBtn" style="align-self:flex-end">추가</button>
       </div>
     </div>
-    <div class="card">
+    <div class="card" style="overflow-x:auto;">
       <h2>등록된 구역 (${state.areas.length}곳)</h2>
       ${state.areas.length===0 ? '<div class="empty">아직 등록된 구역이 없어요.</div>' : `
       <table>
-        <thead><tr><th>구역명</th><th>필요 인원</th><th>난이도</th><th></th></tr></thead>
+        <thead><tr><th>구역명</th><th>필요 인원</th><th>난이도</th><th>성별</th><th>고정인원</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`}
     </div>
@@ -1172,7 +1202,8 @@ function bindEvents(){
       if(!name){ toast('구역명을 입력해주세요.'); return; }
       const capacity = parseInt(document.getElementById('a_capacity').value)||1;
       const difficulty = parseInt(document.getElementById('a_difficulty').value)||1;
-      const area = { name, capacity, difficulty };
+      const genderFilter = document.getElementById('a_gender').value||'all';
+      const area = { name, capacity, difficulty, genderFilter, fixedPeople:[] };
       await addAreaDB(area);
       state.areas.push(area);
       render();
@@ -1186,15 +1217,44 @@ function bindEvents(){
       };
     });
 
-    // 구역 인라인 편집 (필요 인원 / 난이도)
+    // 고정인원 해제
+    document.querySelectorAll('[data-unfix-person]').forEach(b=>{
+      b.onclick = async ()=>{
+        const [areaId, pid] = b.dataset.unfixPerson.split('|');
+        const area = state.areas.find(a=>String(a.id)===String(areaId));
+        if(!area) return;
+        area.fixedPeople = (area.fixedPeople||[]).filter(id=>String(id)!==String(pid));
+        await updateAreaDB(area);
+        render();
+        toast('고정인원을 해제했어요.');
+      };
+    });
+
+    // 구역 인라인 편집 (필요 인원 / 난이도 / 성별 / 고정인원)
     document.querySelectorAll('.area-inline').forEach(input=>{
       input.onchange = async ()=>{
         const id = input.dataset.areaId;
         const field = input.dataset.areaField;
-        const val = parseInt(input.value);
-        if(isNaN(val)||val<1) return;
         const area = state.areas.find(a=>String(a.id)===String(id));
         if(!area) return;
+        if(field==='fixedAdd'){
+          const pid = input.value;
+          if(!pid) return;
+          area.fixedPeople = [...(area.fixedPeople||[]), pid];
+          await updateAreaDB(area);
+          render();
+          toast(`고정인원을 추가했어요.`);
+          return;
+        }
+        if(field==='genderFilter'){
+          area.genderFilter = input.value;
+          await updateAreaDB(area);
+          render();
+          toast(`${area.name} 성별을 변경했어요.`);
+          return;
+        }
+        const val = parseInt(input.value);
+        if(isNaN(val)||val<1) return;
         area[field] = val;
         await updateAreaDB(area);
         toast(`${area.name} ${field==='difficulty'?'난이도':'필요 인원'}을 ${val}로 변경했어요.`);
