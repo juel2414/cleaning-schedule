@@ -894,7 +894,7 @@ function renderDraftBoard(entry, editable){
         <div class="zone-head">
           <div>
             <span class="zone-name">${area.name}</span>
-            <span class="zone-meta"> · 필요 ${area.capacity}명 · 난이도 ${area.difficulty}</span>
+            <span class="zone-meta"> · 필요 ${area.capacity}명 · 레벨 ${area.requiredLevel||0}</span>
             ${area.inspectorId ? `<span style="font-size:11px;color:var(--navy);background:var(--blue-light);border-radius:10px;padding:1px 7px;margin-left:4px;">🔍 ${personById(area.inspectorId)?.name||''}</span>` : ''}
           </div>
           ${warn?`<span class="warn-badge">인원 ${assigned.length}/${area.capacity}</span>`:''}
