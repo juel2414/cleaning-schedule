@@ -788,7 +788,7 @@ function renderAreasTab(){
           return `<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:10px;padding:8px 14px;">
             <span style="font-size:13px;color:var(--muted);">청소 필요 인원</span>
             <span style="font-size:18px;font-weight:800;color:var(--ink);">${totalPeople}명</span>
-            <span style="font-size:13px;color:var(--muted);">청소 가능인원</span>
+            <span style="font-size:13px;color:var(--muted);">청소 가능 인원</span>
             <span style="font-size:18px;font-weight:800;color:var(--ink);">${totalCap}명</span>
             <span style="font-size:12px;font-weight:700;color:${color};background:${diff>=0?'var(--blue-light)':'var(--red-light)'};padding:2px 8px;border-radius:20px;">${diffLabel}</span>
           </div>`;
@@ -818,7 +818,7 @@ function renderGenerateTab(){
           <span style="font-size:13px;color:var(--muted);">청소 필요 인원</span>
           <span style="font-size:18px;font-weight:800;color:var(--ink);">${totalPeople}명</span>
           <span style="font-size:18px;color:var(--muted);">=</span>
-          <span style="font-size:13px;color:var(--muted);">청소 가능인원</span>
+          <span style="font-size:13px;color:var(--muted);">청소 가능 인원</span>
           <span style="font-size:18px;font-weight:800;color:var(--ink);">${totalCap}명</span>
           ${matched
             ? `<span style="font-size:12px;font-weight:700;color:var(--navy);background:var(--blue-light);padding:2px 10px;border-radius:20px;">✓ 인원 일치</span>`
