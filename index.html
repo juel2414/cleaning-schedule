@@ -1813,38 +1813,44 @@ function exportBoardImage(){
   const left = rows.slice(0, half);
   const right = rows.slice(half);
 
-  const headerStyle = 'background:#8080cc;color:#fff;font-weight:700;font-size:13px;padding:7px 10px;text-align:center;border:1px solid #666;';
-  const cellStyle = 'padding:7px 10px;border:1px solid #ccc;font-size:13px;text-align:center;vertical-align:middle;';
-  const areaCellStyle = cellStyle + 'font-size:12px;max-width:90px;word-break:keep-all;';
-  const dividerStyle = 'width:18px;';
+  const HEADER_BG = '#4f46e5';
+  const STRIPE_BG = '#f5f4ff';
+  const BORDER = '#e2e1f5';
 
-  const makeRows = (list) => list.map(row=>`
-    <tr>
-      <td style="${areaCellStyle}">${row.area.name}</td>
-      <td style="${cellStyle}text-align:left;">${assigneeHtml(row)}</td>
-      <td style="${cellStyle}">${row.inspector ? row.inspector.name : ''}</td>
-    </tr>`).join('');
+  const headerStyle = `background:${HEADER_BG};color:#fff;font-weight:700;font-size:13px;padding:9px 14px;text-align:center;letter-spacing:0.03em;`;
+  const makeRows = (list) => list.map((row, i)=>{
+    const bg = i % 2 === 1 ? `background:${STRIPE_BG};` : '';
+    const cell = `padding:8px 14px;font-size:13px;vertical-align:middle;border-bottom:1px solid ${BORDER};${bg}`;
+    const areaCell = cell + 'text-align:center;font-size:12px;color:#374151;max-width:100px;word-break:keep-all;line-height:1.5;';
+    const nameCell = cell + 'text-align:left;';
+    const inspCell = cell + 'text-align:center;color:#4f46e5;font-weight:600;';
+    return `<tr>
+      <td style="${areaCell}">${row.area.name}</td>
+      <td style="${nameCell}">${assigneeHtml(row)}</td>
+      <td style="${inspCell}">${row.inspector ? row.inspector.name : ''}</td>
+    </tr>`;
+  }).join('');
+
+  const makeTable = (list) => `
+    <table style="border-collapse:collapse;flex:1;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(79,70,229,0.10);border:1.5px solid ${BORDER};">
+      <thead><tr>
+        <th style="${headerStyle}width:90px;">청소구역</th>
+        <th style="${headerStyle}">담당자</th>
+        <th style="${headerStyle}width:70px;">점검자</th>
+      </tr></thead>
+      <tbody>${makeRows(list)}</tbody>
+    </table>`;
 
   const html = `
-  <div style="font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:#fff;padding:28px 24px;display:inline-block;min-width:900px;">
-    <h1 style="text-align:center;font-size:26px;font-weight:900;margin:0 0 20px;">${entry.month} 본부 건물 청소당번표</h1>
-    <div style="display:flex;gap:18px;align-items:flex-start;">
-      <table style="border-collapse:collapse;flex:1;">
-        <tr>
-          <th style="${headerStyle}">청소구역</th>
-          <th style="${headerStyle}">담당자</th>
-          <th style="${headerStyle}">점검자</th>
-        </tr>
-        ${makeRows(left)}
-      </table>
-      <table style="border-collapse:collapse;flex:1;">
-        <tr>
-          <th style="${headerStyle}">청소구역</th>
-          <th style="${headerStyle}">담당자</th>
-          <th style="${headerStyle}">점검자</th>
-        </tr>
-        ${makeRows(right)}
-      </table>
+  <div style="font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:#fafaff;padding:36px 32px;display:inline-block;min-width:960px;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="display:inline-block;border-bottom:3px solid ${HEADER_BG};padding-bottom:8px;">
+        <h1 style="font-size:28px;font-weight:900;color:#1e1b4b;margin:0;letter-spacing:-0.02em;">${entry.month} 본부 건물 청소당번표</h1>
+      </div>
+    </div>
+    <div style="display:flex;gap:20px;align-items:flex-start;">
+      ${makeTable(left)}
+      ${makeTable(right)}
     </div>
   </div>`;
 
