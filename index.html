@@ -1065,11 +1065,14 @@ function generateDraft(){
     const teamDiversityBonus = (u) => u.members.some(m=>!teamsInArea().has(m.team||'')) ? -1 : 0;
 
     // 배정 때마다 남은 레벨 필요량 / 남은 인원수로 목표 레벨을 재계산해 가장 근접한 유닛 선택
+    // 레벨 합이 목표를 초과하는 유닛은 후순위
     const sortByBalance = () => {
       const remainingSlots = area.capacity - filled;
       if(areaReqLevel > 0 && remainingSlots > 0){
         const targetLevel = Math.max(0, areaReqLevel - currentLevelSum) / remainingSlots;
+        const wouldOvershoot = (u) => currentLevelSum + u.members.reduce((s,m)=>s+m.level,0) > areaReqLevel ? 1 : 0;
         remainingUnits.sort((a,b)=>
+          (wouldOvershoot(a) - wouldOvershoot(b)) ||
           (Math.abs(a.level - targetLevel) - Math.abs(b.level - targetLevel)) ||
           (teamDiversityBonus(a) - teamDiversityBonus(b))
         );
