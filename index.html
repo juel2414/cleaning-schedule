@@ -222,6 +222,8 @@
   .stepper button{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);color:var(--navy);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;transition:background .15s;}
   .stepper button:hover{background:var(--blue-light);border-color:var(--blue);}
   .stepper .val{min-width:22px;text-align:center;font-size:13px;font-weight:700;color:var(--ink);}
+  .stepper input.val{border:none;background:transparent;outline:none;width:36px;padding:0;cursor:text;}
+  .stepper input.val:focus{background:var(--blue-light);border-radius:4px;}
   .indoor-toggle{display:inline-flex;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);font-size:12px;}
   .indoor-toggle button{padding:3px 10px;border:none;background:none;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600;transition:background .15s,color .15s;}
   .indoor-toggle button.active{background:var(--navy);color:#fff;}
@@ -749,7 +751,7 @@ function renderAreasTab(){
       <td>
         <div class="stepper">
           <button data-step-area="${a.id}" data-step-field="requiredLevel" data-step-dir="-1">−</button>
-          <span class="val" style="min-width:28px;">${a.requiredLevel||0}</span>
+          <input class="val" type="number" data-stepper-input data-step-area="${a.id}" data-step-field="requiredLevel" value="${a.requiredLevel||0}" style="min-width:28px;">
           <button data-step-area="${a.id}" data-step-field="requiredLevel" data-step-dir="1">+</button>
         </div>
       </td>
@@ -1395,6 +1397,25 @@ function bindEvents(){
         await updateAreaDB(area);
         render();
       };
+    });
+
+    // 스테퍼 직접 입력
+    document.querySelectorAll('[data-stepper-input]').forEach(inp=>{
+      const save = async ()=>{
+        const id = inp.dataset.stepArea;
+        const field = inp.dataset.stepField;
+        const area = state.areas.find(a=>String(a.id)===String(id));
+        if(!area) return;
+        const min = field==='requiredLevel' ? 0 : 1;
+        const max = 999;
+        const val = Math.min(max, Math.max(min, parseInt(inp.value)||0));
+        if(area[field]===val) return;
+        area[field] = val;
+        await updateAreaDB(area);
+        render();
+      };
+      inp.onblur = save;
+      inp.onkeydown = e=>{ if(e.key==='Enter'){ inp.blur(); } };
     });
 
     // 난이도 토글
