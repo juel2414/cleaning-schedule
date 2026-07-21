@@ -1056,10 +1056,15 @@ function generateDraft(){
     const areaReqLevel = area.requiredLevel || 0;
 
     // 구역 레벨 필요 시 레벨 높은 순 우선, 아니면 공정성(배정 적은 순)
+    // 동일 레벨/점수 내에서는 이미 배정된 팀과 다른 팀을 우선 (팀 다양성)
+    const teamsInArea = () => new Set(
+      assignments[area.id].map(pid=>state.people.find(p=>p.id===pid)?.team||'')
+    );
+    const teamDiversityBonus = (u) => u.members.some(m=>!teamsInArea().has(m.team||'')) ? -1 : 0;
     if(areaReqLevel > 0){
-      remainingUnits.sort((a,b)=>b.level-a.level);
+      remainingUnits.sort((a,b)=> (b.level - a.level) || (teamDiversityBonus(a) - teamDiversityBonus(b)));
     } else {
-      remainingUnits.sort((a,b)=>unitScore(a)-unitScore(b));
+      remainingUnits.sort((a,b)=> (unitScore(a)-unitScore(b)) || (teamDiversityBonus(a) - teamDiversityBonus(b)));
     }
 
     // 현재 배정된 고정인원 레벨 합
