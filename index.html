@@ -1788,9 +1788,10 @@ function exportBoardImage(){
   const rows = areas.map(area=>{
     const pids = assignments[area.id] || [];
     const members = pids.map(pid=>people.find(p=>p.id===pid)).filter(Boolean);
-    const inspector = area.inspectorId ? people.find(p=>p.id===area.inspectorId) : null;
     const workers = members.filter(m=>m.category==='worker');
     const nonWorkers = members.filter(m=>m.category!=='worker');
+    // 점검자: 해당 구역에 배정된 사역자 (첫 번째)
+    const inspector = workers[0] || null;
     return { area, members, nonWorkers, workers, inspector };
   });
 
