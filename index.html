@@ -495,9 +495,9 @@ function renderPersonRow(p, isMentee){
   </select>`;
   return `<div class="${rowClass}" data-pid="${p.id}" style="grid-template-columns:28px 1fr auto auto auto auto auto auto auto;">
     <input type="checkbox" class="p-check" data-id="${p.id}" ${sel?'checked':''} style="cursor:pointer;width:15px;height:15px;">
-    <span class="prow-name">
+    <span class="prow-name" style="display:flex;align-items:center;gap:4px;">
       ${isMentee?'<span class="mentee-indent">└</span>':''}
-      ${p.name}
+      <span class="inline-name" data-edit-name="${p.id}" style="cursor:pointer;" title="클릭해서 이름 수정">${p.name}</span>
       ${p.category==='mentor'?'<span class="mentor-badge">멘토</span>':''}
     </span>
     <span class="editable-cell" data-toggle="gender" data-id="${p.id}" title="클릭해서 수정">
@@ -722,7 +722,7 @@ function renderAreasTab(){
     </select>`;
     return `
     <tr data-area-id="${a.id}">
-      <td style="font-weight:600">${a.name}</td>
+      <td style="font-weight:600;cursor:pointer;" title="클릭해서 이름 수정"><span class="inline-name" data-edit-area-name="${a.id}">${a.name}</span></td>
       <td>
         <div class="stepper">
           <button data-step-area="${a.id}" data-step-field="capacity" data-step-dir="-1">−</button>
@@ -1150,6 +1150,32 @@ function bindEvents(){
       };
     });
     // 누끼 전체 선택 버튼
+    // 인원 이름 인라인 수정
+    document.querySelectorAll('[data-edit-name]').forEach(span=>{
+      span.onclick = (e)=>{
+        e.stopPropagation();
+        const id = span.dataset.editName;
+        const person = state.people.find(p=>String(p.id)===String(id));
+        if(!person) return;
+        const inp = document.createElement('input');
+        inp.value = person.name;
+        inp.style.cssText = 'font-size:13px;font-weight:600;border:1px solid var(--blue);border-radius:4px;padding:1px 6px;width:80px;outline:none;';
+        span.replaceWith(inp);
+        inp.focus(); inp.select();
+        const save = async ()=>{
+          const val = inp.value.trim();
+          if(val && val !== person.name){
+            person.name = val;
+            await updatePersonDB(person);
+            toast(`이름을 "${val}"로 변경했어요.`);
+          }
+          render();
+        };
+        inp.onblur = save;
+        inp.onkeydown = e=>{ if(e.key==='Enter') inp.blur(); if(e.key==='Escape'){ inp.value=person.name; inp.blur(); } };
+      };
+    });
+
     // 카테고리 필터 탭
     document.querySelectorAll('.filter-tab').forEach(btn=>{
       btn.onclick = ()=>{ state._peopleFilter = btn.dataset.f; render(); };
@@ -1419,6 +1445,31 @@ function bindEvents(){
         area[field] = newVal;
         await updateAreaDB(area);
         render();
+      };
+    });
+
+    // 구역 이름 인라인 수정
+    document.querySelectorAll('[data-edit-area-name]').forEach(span=>{
+      span.onclick = ()=>{
+        const id = span.dataset.editAreaName;
+        const area = state.areas.find(a=>String(a.id)===String(id));
+        if(!area) return;
+        const inp = document.createElement('input');
+        inp.value = area.name;
+        inp.style.cssText = 'font-size:13px;font-weight:600;border:1px solid var(--blue);border-radius:4px;padding:1px 6px;width:90px;outline:none;';
+        span.replaceWith(inp);
+        inp.focus(); inp.select();
+        const save = async ()=>{
+          const val = inp.value.trim();
+          if(val && val !== area.name){
+            area.name = val;
+            await updateAreaDB(area);
+            toast(`구역명을 "${val}"로 변경했어요.`);
+          }
+          render();
+        };
+        inp.onblur = save;
+        inp.onkeydown = e=>{ if(e.key==='Enter') inp.blur(); if(e.key==='Escape'){ inp.value=area.name; inp.blur(); } };
       };
     });
 
