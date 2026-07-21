@@ -716,7 +716,7 @@ function renderAreasTab(){
       const p = state.people.find(x=>x.id===pid);
       return p ? `<span class="chip" style="font-size:11px;padding:2px 7px;">${p.name}<button style="margin-left:4px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;" data-unfix-person="${a.id}|${pid}">✕</button></span>` : '';
     }).join('');
-    const nonFixed = state.people.filter(p=>p.category!=='worker' && !(a.fixedPeople||[]).includes(p.id) && (a.genderFilter==='all'||p.gender===a.genderFilter));
+    const nonFixed = state.people.filter(p=>!(a.fixedPeople||[]).includes(p.id) && (a.genderFilter==='all'||p.gender===a.genderFilter));
     const fixSelect = `<select class="area-inline" data-area-field="fixedAdd" data-area-id="${a.id}" style="font-size:11px;max-width:100px;">
       <option value="">+ 고정인원</option>
       ${nonFixed.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
