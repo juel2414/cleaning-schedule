@@ -1084,13 +1084,29 @@ function generateDraft(){
       }
     };
 
+    // 비사역자 기준 구역 내 성별 고정 (사역자는 무관)
+    const nonWorkerGender = () => {
+      for(const pid of assignments[area.id]){
+        const p = state.people.find(x=>x.id===pid);
+        if(p && p.category!=='worker') return p.gender;
+      }
+      return null;
+    };
+    const genderMixOk = (u) => {
+      const nonWorkers = u.members.filter(m=>m.category!=='worker');
+      if(nonWorkers.length===0) return true;
+      const areaGender = nonWorkerGender();
+      if(areaGender===null) return true;
+      return nonWorkers.every(m=>m.gender===areaGender);
+    };
+
     let i=0;
     while(filled < area.capacity && i < remainingUnits.length){
       sortByBalance();
       const u = remainingUnits[i];
       const size = u.members.length;
       if(filled + size > area.capacity){ i++; continue; }
-      const genderOk = areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq);
+      const genderOk = (areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq)) && genderMixOk(u);
       const noRepeat = u.members.every(m=> lastMap[m.id] !== area.id);
       const workerOk = !isWorkerUnit(u) || !hasWorker();
       if(genderOk && noRepeat && workerOk){
@@ -1110,7 +1126,7 @@ function generateDraft(){
         const u = remainingUnits[i];
         const size = u.members.length;
         if(filled + size > area.capacity){ i++; continue; }
-        const genderOk = areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq);
+        const genderOk = (areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq)) && genderMixOk(u);
         const workerOk = !isWorkerUnit(u) || !hasWorker();
         if(genderOk && workerOk){
           assignments[area.id].push(...u.members.map(m=>m.id));
