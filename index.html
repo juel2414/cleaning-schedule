@@ -313,7 +313,7 @@ function dbPersonToState(p){
   return { id:p.id, name:p.name, gender:p.gender, category:p.category, team:p.team||'', level:p.level, mentorId:p.mentor_id, age:p.age||null };
 }
 function dbAreaToState(a){
-  return { id:a.id, name:a.name, capacity:a.capacity, difficulty:a.difficulty, genderFilter:a.gender_filter||'all', fixedPeople:a.fixed_people||[], isIndoor:a.is_indoor!==false, requiredLevel:a.required_level||0 };
+  return { id:a.id, name:a.name, capacity:a.capacity, difficulty:a.difficulty, genderFilter:a.gender_filter||'all', fixedPeople:a.fixed_people||[], isIndoor:a.is_indoor!==false, requiredLevel:a.required_level||0, inspectorId:a.inspector_id||null };
 }
 function dbScheduleToState(s){
   return { id:s.id, month:s.month, assignments:s.assignments||{}, status:s.status, notes:s.notes||[], createdAt: new Date(s.created_at).getTime() };
@@ -352,11 +352,11 @@ async function updatePersonDB(p){
 }
 
 async function addAreaDB(a){
-  const {data, error} = await sb.from('areas').insert({ name:a.name, capacity:a.capacity, difficulty:a.difficulty, gender_filter:a.genderFilter||'all', fixed_people:a.fixedPeople||[], is_indoor:a.isIndoor!==false, required_level:a.requiredLevel||0 }).select().single();
+  const {data, error} = await sb.from('areas').insert({ name:a.name, capacity:a.capacity, difficulty:a.difficulty, gender_filter:a.genderFilter||'all', fixed_people:a.fixedPeople||[], is_indoor:a.isIndoor!==false, required_level:a.requiredLevel||0, inspector_id:a.inspectorId||null }).select().single();
   if(!error && data) a.id = data.id;
 }
 async function deleteAreaDB(id){ await sb.from('areas').delete().eq('id', id); }
-async function updateAreaDB(a){ await sb.from('areas').update({name:a.name,capacity:a.capacity,difficulty:a.difficulty,gender_filter:a.genderFilter,fixed_people:a.fixedPeople,is_indoor:a.isIndoor!==false,required_level:a.requiredLevel||0}).eq('id',a.id); }
+async function updateAreaDB(a){ await sb.from('areas').update({name:a.name,capacity:a.capacity,difficulty:a.difficulty,gender_filter:a.genderFilter,fixed_people:a.fixedPeople,is_indoor:a.isIndoor!==false,required_level:a.requiredLevel||0,inspector_id:a.inspectorId||null}).eq('id',a.id); }
 
 async function createDraftDB(draft){
   const {data, error} = await sb.from('schedules').insert({
@@ -756,6 +756,15 @@ function renderAreasTab(){
           <button data-step-area="${a.id}" data-step-field="requiredLevel" data-step-dir="1">+</button>
         </div>
       </td>
+      <td style="min-width:100px;">
+        ${(()=>{
+          const workers = state.people.filter(p=>p.category==='worker');
+          return `<select class="area-inline" data-area-field="inspectorId" data-area-id="${a.id}" style="font-size:12px;max-width:100px;">
+            <option value="">-</option>
+            ${workers.map(w=>`<option value="${w.id}" ${a.inspectorId===w.id?'selected':''}>${w.name}</option>`).join('')}
+          </select>`;
+        })()}
+      </td>
       <td><button class="btn ghost small danger" data-del-area="${a.id}">삭제</button></td>
     </tr>`;
   }).join('');
@@ -799,7 +808,7 @@ function renderAreasTab(){
       </div>
       ${state.areas.length===0 ? '<div class="empty">아직 등록된 구역이 없어요.</div>' : `
       <table>
-        <thead><tr><th>구역명</th><th>필요 인원</th><th>구분</th><th>성별</th><th>고정인원</th><th>구역 레벨</th><th></th></tr></thead>
+        <thead><tr><th>구역명</th><th>필요 인원</th><th>구분</th><th>성별</th><th>고정인원</th><th>구역 레벨</th><th>점검자</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`}
     </div>
@@ -853,6 +862,7 @@ function renderDraftBoard(entry, editable){
           <div>
             <span class="zone-name">${area.name}</span>
             <span class="zone-meta"> · 필요 ${area.capacity}명 · 난이도 ${area.difficulty}</span>
+            ${area.inspectorId ? `<span style="font-size:11px;color:var(--navy);background:var(--blue-light);border-radius:10px;padding:1px 7px;margin-left:4px;">🔍 ${personById(area.inspectorId)?.name||''}</span>` : ''}
           </div>
           ${warn?`<span class="warn-badge">인원 ${assigned.length}/${area.capacity}</span>`:''}
         </div>
@@ -986,6 +996,9 @@ function generateDraft(){
   const assignments = {};
   state.areas.forEach(a=> assignments[a.id]=[]);
 
+  // 점검자 배정 준비: 점검자별로 담당 구역 목록 수집
+  const placedInspectors = new Set();
+
   let remainingUnits = [...units];
 
   areasSorted.forEach(area=>{
@@ -995,6 +1008,15 @@ function generateDraft(){
       if(!assignments[area.id].includes(pid)) assignments[area.id].push(pid);
       remainingUnits = remainingUnits.filter(u=>!u.members.some(m=>m.id===pid));
     });
+
+    // 점검자 배치: 아직 어느 구역에도 배치되지 않은 경우 이 구역에 포함
+    if(area.inspectorId && !placedInspectors.has(area.inspectorId)){
+      if(!assignments[area.id].includes(area.inspectorId)){
+        assignments[area.id].push(area.inspectorId);
+      }
+      placedInspectors.add(area.inspectorId);
+      remainingUnits = remainingUnits.filter(u=>!u.members.some(m=>m.id===area.inspectorId));
+    }
 
     let filled = assignments[area.id].length;
     const areaGenderReq = area.genderFilter && area.genderFilter !== 'all' ? area.genderFilter : null;
@@ -1469,6 +1491,13 @@ function bindEvents(){
           await updateAreaDB(area);
           render();
           toast(`${area.name} 성별을 변경했어요.`);
+          return;
+        }
+        if(field==='inspectorId'){
+          area.inspectorId = input.value || null;
+          await updateAreaDB(area);
+          const name = input.value ? state.people.find(p=>p.id===input.value)?.name : '없음';
+          toast(`${area.name} 점검자를 ${name}으로 설정했어요.`);
           return;
         }
         const val = parseInt(input.value);
