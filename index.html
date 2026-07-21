@@ -792,7 +792,7 @@ function renderAreasTab(){
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
         <h2 style="margin:0;">등록된 구역 (${state.areas.length}곳)</h2>
         ${(()=>{
-          const totalPeople = state.people.filter(p=>p.category!=='worker').length;
+          const totalPeople = state.people.length;
           const totalCap = state.areas.reduce((s,a)=>s+a.capacity,0);
           const diff = totalPeople - totalCap;
           const color = diff>=0 ? 'var(--navy)' : 'var(--red)';
@@ -818,7 +818,7 @@ function renderAreasTab(){
 // ---------- generate tab ----------
 function renderGenerateTab(){
   if(!state.draft){
-    const totalPeople = state.people.filter(p=>p.category!=='worker').length;
+    const totalPeople = state.people.length;
     const totalCap = state.areas.reduce((s,a)=>s+a.capacity,0);
     const matched = totalPeople>0 && state.areas.length>0 && totalPeople===totalCap;
     const diff = totalPeople - totalCap;
