@@ -1776,11 +1776,86 @@ function bindEvents(){
 }
 
 function exportBoardImage(){
-  const el = document.getElementById('captureArea');
+  if(!state.draft) return;
   toast('이미지 생성 중...');
-  html2canvas(el, { backgroundColor:'#fffefb', scale:2 }).then(canvas=>{
+
+  const entry = state.draft;
+  const areas = state.areas;
+  const people = state.people;
+  const assignments = entry.assignments || {};
+
+  // 구역별 데이터 준비
+  const rows = areas.map(area=>{
+    const pids = assignments[area.id] || [];
+    const members = pids.map(pid=>people.find(p=>p.id===pid)).filter(Boolean);
+    const inspector = area.inspectorId ? people.find(p=>p.id===area.inspectorId) : null;
+    const workers = members.filter(m=>m.category==='worker');
+    const nonWorkers = members.filter(m=>m.category!=='worker');
+    return { area, members, nonWorkers, workers, inspector };
+  });
+
+  // 한 사람 이름 HTML (팀별 색상)
+  const nameHtml = (p) => {
+    const color = p.team==='초등' ? '#e67e00' : p.team==='선교한국' ? '#2563eb' : '#111';
+    return `<span style="color:${color};font-weight:${p.team==='초등'||p.team==='선교한국'?'700':'400'}">${p.name}</span>`;
+  };
+
+  // 담당자 셀 내용
+  const assigneeHtml = (row) => {
+    const parts = row.nonWorkers.map(nameHtml);
+    if(row.workers.length > 0) parts.push('/ ' + row.workers.map(p=>p.name).join(' '));
+    return parts.join(' ') || '-';
+  };
+
+  // 표를 2열로 분할
+  const half = Math.ceil(rows.length / 2);
+  const left = rows.slice(0, half);
+  const right = rows.slice(half);
+
+  const headerStyle = 'background:#8080cc;color:#fff;font-weight:700;font-size:13px;padding:7px 10px;text-align:center;border:1px solid #666;';
+  const cellStyle = 'padding:7px 10px;border:1px solid #ccc;font-size:13px;text-align:center;vertical-align:middle;';
+  const areaCellStyle = cellStyle + 'font-size:12px;max-width:90px;word-break:keep-all;';
+  const dividerStyle = 'width:18px;';
+
+  const makeRows = (list) => list.map(row=>`
+    <tr>
+      <td style="${areaCellStyle}">${row.area.name}</td>
+      <td style="${cellStyle}text-align:left;">${assigneeHtml(row)}</td>
+      <td style="${cellStyle}">${row.inspector ? row.inspector.name : ''}</td>
+    </tr>`).join('');
+
+  const html = `
+  <div style="font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:#fff;padding:28px 24px;display:inline-block;min-width:900px;">
+    <h1 style="text-align:center;font-size:26px;font-weight:900;margin:0 0 20px;">${entry.month} 본부 건물 청소당번표</h1>
+    <div style="display:flex;gap:18px;align-items:flex-start;">
+      <table style="border-collapse:collapse;flex:1;">
+        <tr>
+          <th style="${headerStyle}">청소구역</th>
+          <th style="${headerStyle}">담당자</th>
+          <th style="${headerStyle}">점검자</th>
+        </tr>
+        ${makeRows(left)}
+      </table>
+      <table style="border-collapse:collapse;flex:1;">
+        <tr>
+          <th style="${headerStyle}">청소구역</th>
+          <th style="${headerStyle}">담당자</th>
+          <th style="${headerStyle}">점검자</th>
+        </tr>
+        ${makeRows(right)}
+      </table>
+    </div>
+  </div>`;
+
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;';
+  wrapper.innerHTML = html;
+  document.body.appendChild(wrapper);
+
+  html2canvas(wrapper.firstElementChild, { backgroundColor:'#ffffff', scale:2 }).then(canvas=>{
+    document.body.removeChild(wrapper);
     const link = document.createElement('a');
-    link.download = `청소당번표_${(state.draft?state.draft.month:'').replace(/\s/g,'')}.png`;
+    link.download = `청소당번표_${entry.month.replace(/\s/g,'')}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
   });
