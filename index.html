@@ -222,7 +222,8 @@
   .stepper button{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);color:var(--navy);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;transition:background .15s;}
   .stepper button:hover{background:var(--blue-light);border-color:var(--blue);}
   .stepper .val{min-width:22px;text-align:center;font-size:13px;font-weight:700;color:var(--ink);}
-  .stepper input.val{border:none;background:transparent;outline:none;width:36px;padding:0;cursor:text;}
+  .stepper input.val{border:none;background:transparent;outline:none;width:36px;padding:0;cursor:text;-moz-appearance:textfield;}
+  .stepper input.val::-webkit-outer-spin-button,.stepper input.val::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   .stepper input.val:focus{background:var(--blue-light);border-radius:4px;}
   .indoor-toggle{display:inline-flex;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);font-size:12px;}
   .indoor-toggle button{padding:3px 10px;border:none;background:none;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600;transition:background .15s,color .15s;}
