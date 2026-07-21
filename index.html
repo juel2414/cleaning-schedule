@@ -1031,23 +1031,27 @@ function generateDraft(){
 
   // 점검자 배정 준비: 점검자별로 담당 구역 목록 수집
   const placedInspectors = new Set();
+  // 한 사람은 한 달에 한 구역에만 배정 — 이미 배정된 인원 추적
+  const assignedPeople = new Set();
 
   // 매 생성마다 다른 결과를 위해 초기 순서 셔플
   let remainingUnits = [...units].sort(()=>Math.random()-0.5);
 
   areasSorted.forEach(area=>{
-    // 고정인원 먼저 배치
-    const fixedIds = (area.fixedPeople||[]).filter(pid=> state.people.find(p=>p.id===pid));
+    // 고정인원 먼저 배치 (이미 다른 구역에 배정된 인원 제외)
+    const fixedIds = (area.fixedPeople||[]).filter(pid=> state.people.find(p=>p.id===pid) && !assignedPeople.has(pid));
     fixedIds.forEach(pid=>{
       if(!assignments[area.id].includes(pid)) assignments[area.id].push(pid);
+      assignedPeople.add(pid);
       remainingUnits = remainingUnits.filter(u=>!u.members.some(m=>m.id===pid));
     });
 
     // 점검자 배치: 아직 어느 구역에도 배치되지 않은 경우 이 구역에 포함
-    if(area.inspectorId && !placedInspectors.has(area.inspectorId)){
+    if(area.inspectorId && !placedInspectors.has(area.inspectorId) && !assignedPeople.has(area.inspectorId)){
       if(!assignments[area.id].includes(area.inspectorId)){
         assignments[area.id].push(area.inspectorId);
       }
+      assignedPeople.add(area.inspectorId);
       placedInspectors.add(area.inspectorId);
       remainingUnits = remainingUnits.filter(u=>!u.members.some(m=>m.id===area.inspectorId));
     }
@@ -1122,6 +1126,7 @@ function generateDraft(){
       const workerOk = !isWorkerUnit(u) || !hasWorker();
       if(genderOk && noRepeat && workerOk){
         assignments[area.id].push(...u.members.map(m=>m.id));
+        u.members.forEach(m=>assignedPeople.add(m.id));
         currentLevelSum += u.members.reduce((s,m)=>s+m.level,0);
         filled += size;
         remainingUnits.splice(i,1);
@@ -1141,6 +1146,7 @@ function generateDraft(){
         const workerOk = !isWorkerUnit(u) || !hasWorker();
         if(genderOk && workerOk){
           assignments[area.id].push(...u.members.map(m=>m.id));
+          u.members.forEach(m=>assignedPeople.add(m.id));
           currentLevelSum += u.members.reduce((s,m)=>s+m.level,0);
           filled += size;
           remainingUnits.splice(i,1);
