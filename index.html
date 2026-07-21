@@ -1860,15 +1860,14 @@ async function exportBoardImage(){
     </table>`;
 
   const nukkiTag = nukkiB64
-    ? `<img src="${nukkiB64}" style="height:130px;object-fit:contain;display:block;align-self:flex-end;flex-shrink:0;" />`
-    : `<div style="width:100px;"></div>`;
+    ? `<img src="${nukkiB64}" style="height:160px;object-fit:contain;display:block;align-self:flex-end;flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.13));" />`
+    : '';
 
   const html = `
-  <div style="font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:${BG};padding:32px 32px 28px;display:inline-block;min-width:980px;border-radius:20px;">
-    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px;">
-      <div style="width:130px;flex-shrink:0;"></div>
-      <div style="text-align:center;flex:1;">
-        <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:6px;">
+  <div style="font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:${BG};padding:20px 24px 20px;display:inline-block;min-width:980px;border-radius:20px;">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:12px;gap:12px;">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:2px;">
+        <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:5px;">
           <span style="display:inline-block;width:28px;height:4px;background:${ACCENT};border-radius:2px;"></span>
           <h1 style="font-size:26px;font-weight:900;color:#2d1b69;margin:0;letter-spacing:-0.01em;">${titleText}</h1>
           <span style="display:inline-block;width:28px;height:4px;background:${ACCENT};border-radius:2px;"></span>
@@ -1879,7 +1878,7 @@ async function exportBoardImage(){
           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#c4b5fd;"></span>
         </div>
       </div>
-      <div style="width:130px;flex-shrink:0;display:flex;justify-content:flex-end;">${nukkiTag}</div>
+      ${nukkiTag ? `<div style="flex-shrink:0;">${nukkiTag}</div>` : ''}
     </div>
     <div style="display:flex;gap:16px;align-items:flex-start;">
       ${makeTable(left)}
