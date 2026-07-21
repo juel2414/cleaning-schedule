@@ -1066,6 +1066,9 @@ function generateDraft(){
     const levelSumOf = (pids) => pids.reduce((s,pid)=>{ const p=state.people.find(x=>x.id===pid); return s+(p?p.level:0); }, 0);
     let currentLevelSum = levelSumOf(assignments[area.id]);
 
+    const hasWorker = () => assignments[area.id].some(pid=>{ const p=state.people.find(x=>x.id===pid); return p?.category==='worker'; });
+    const isWorkerUnit = (u) => u.members.every(m=>m.category==='worker');
+
     let i=0;
     while(filled < area.capacity && i < remainingUnits.length){
       const u = remainingUnits[i];
@@ -1073,7 +1076,8 @@ function generateDraft(){
       if(filled + size > area.capacity){ i++; continue; }
       const genderOk = areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq);
       const noRepeat = u.members.every(m=> lastMap[m.id] !== area.id);
-      if(genderOk && noRepeat){
+      const workerOk = !isWorkerUnit(u) || !hasWorker();
+      if(genderOk && noRepeat && workerOk){
         assignments[area.id].push(...u.members.map(m=>m.id));
         currentLevelSum += u.members.reduce((s,m)=>s+m.level,0);
         filled += size;
@@ -1090,7 +1094,8 @@ function generateDraft(){
         const size = u.members.length;
         if(filled + size > area.capacity){ i++; continue; }
         const genderOk = areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq);
-        if(genderOk){
+        const workerOk = !isWorkerUnit(u) || !hasWorker();
+        if(genderOk && workerOk){
           assignments[area.id].push(...u.members.map(m=>m.id));
           currentLevelSum += u.members.reduce((s,m)=>s+m.level,0);
           filled += size;
