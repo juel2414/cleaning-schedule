@@ -1037,13 +1037,20 @@ function generateDraft(){
   // 매 생성마다 다른 결과를 위해 초기 순서 셔플
   let remainingUnits = [...units].sort(()=>Math.random()-0.5);
 
-  areasSorted.forEach(area=>{
-    // 고정인원 먼저 배치 (이미 다른 구역에 배정된 인원 제외)
-    const fixedIds = (area.fixedPeople||[]).filter(pid=> state.people.find(p=>p.id===pid) && !assignedPeople.has(pid));
-    fixedIds.forEach(pid=>{
-      if(!assignments[area.id].includes(pid)) assignments[area.id].push(pid);
+  // 루프 전에 모든 구역의 고정인원·점검자를 미리 remainingUnits에서 제거
+  // → 정렬 순서와 무관하게 고정인원이 다른 구역에 배정되는 것을 차단
+  state.areas.forEach(area=>{
+    (area.fixedPeople||[]).forEach(pid=>{
       assignedPeople.add(pid);
       remainingUnits = remainingUnits.filter(u=>!u.members.some(m=>m.id===pid));
+    });
+  });
+
+  areasSorted.forEach(area=>{
+    // 고정인원 배치
+    const fixedIds = (area.fixedPeople||[]).filter(pid=> state.people.find(p=>p.id===pid));
+    fixedIds.forEach(pid=>{
+      if(!assignments[area.id].includes(pid)) assignments[area.id].push(pid);
     });
 
     // 점검자 배치: 아직 어느 구역에도 배치되지 않은 경우 이 구역에 포함
