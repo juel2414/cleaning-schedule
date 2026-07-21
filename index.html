@@ -313,7 +313,7 @@ function dbPersonToState(p){
   return { id:p.id, name:p.name, gender:p.gender, category:p.category, team:p.team||'', level:p.level, mentorId:p.mentor_id, age:p.age||null };
 }
 function dbAreaToState(a){
-  return { id:a.id, name:a.name, capacity:a.capacity, difficulty:a.difficulty, genderFilter:a.gender_filter||'all', fixedPeople:a.fixed_people||[], isIndoor:a.is_indoor!==false, requiredLevel:a.required_level||0, inspectorId:a.inspector_id||null };
+  return { id:a.id, name:a.name, capacity:a.capacity, difficulty:a.difficulty, genderFilter:a.gender_filter||'all', fixedPeople:a.fixed_people||[], isIndoor:a.is_indoor!==false, requiredLevel:a.required_level||0, inspectorId:a.inspector_id||null, requireWorker:a.require_worker||false };
 }
 function dbScheduleToState(s){
   return { id:s.id, month:s.month, assignments:s.assignments||{}, status:s.status, notes:s.notes||[], createdAt: new Date(s.created_at).getTime() };
@@ -356,7 +356,7 @@ async function addAreaDB(a){
   if(!error && data) a.id = data.id;
 }
 async function deleteAreaDB(id){ await sb.from('areas').delete().eq('id', id); }
-async function updateAreaDB(a){ await sb.from('areas').update({name:a.name,capacity:a.capacity,difficulty:a.difficulty,gender_filter:a.genderFilter,fixed_people:a.fixedPeople,is_indoor:a.isIndoor!==false,required_level:a.requiredLevel||0,inspector_id:a.inspectorId||null}).eq('id',a.id); }
+async function updateAreaDB(a){ await sb.from('areas').update({name:a.name,capacity:a.capacity,difficulty:a.difficulty,gender_filter:a.genderFilter,fixed_people:a.fixedPeople,is_indoor:a.isIndoor!==false,required_level:a.requiredLevel||0,inspector_id:a.inspectorId||null,require_worker:a.requireWorker||false}).eq('id',a.id); }
 
 async function createDraftDB(draft){
   const {data, error} = await sb.from('schedules').insert({
@@ -766,6 +766,11 @@ function renderAreasTab(){
           </select>`;
         })()}
       </td>
+      <td>
+        <button class="btn ghost small ${a.requireWorker?'active':''}" data-require-worker="${a.id}" title="사역자 필수 배정" style="font-size:11px;padding:2px 8px;">
+          ${a.requireWorker?'사역자 필수':'사역자 선택'}
+        </button>
+      </td>
       <td><button class="btn ghost small danger" data-del-area="${a.id}">삭제</button></td>
     </tr>`;
   }).join('');
@@ -1037,13 +1042,30 @@ function generateDraft(){
   // 매 생성마다 다른 결과를 위해 초기 순서 셔플
   let remainingUnits = [...units].sort(()=>Math.random()-0.5);
 
-  // 루프 전에 모든 구역의 고정인원·점검자를 미리 remainingUnits에서 제거
-  // → 정렬 순서와 무관하게 고정인원이 다른 구역에 배정되는 것을 차단
+  // 루프 전에 모든 구역의 고정인원을 미리 remainingUnits에서 제거
   state.areas.forEach(area=>{
     (area.fixedPeople||[]).forEach(pid=>{
       assignedPeople.add(pid);
       remainingUnits = remainingUnits.filter(u=>!u.members.some(m=>m.id===pid));
     });
+  });
+
+  // 사역자 필수 구역에 사역자 유닛 미리 예약 (일반 루프에서 소진되기 전에)
+  const requireWorkerAreas = areasSorted.filter(a=>a.requireWorker);
+  requireWorkerAreas.forEach(area=>{
+    // 고정인원/점검자 중 이미 사역자가 있으면 건너뜀
+    const alreadyHasWorker = (area.fixedPeople||[]).some(pid=>{
+      const p = state.people.find(x=>x.id===pid);
+      return p?.category==='worker';
+    }) || (area.inspectorId && state.people.find(x=>x.id===area.inspectorId)?.category==='worker');
+    if(alreadyHasWorker) return;
+    const workerUnitIdx = remainingUnits.findIndex(u=>u.members.some(m=>m.category==='worker') && u.members.length <= area.capacity);
+    if(workerUnitIdx !== -1){
+      const wu = remainingUnits[workerUnitIdx];
+      wu.members.forEach(m=>assignedPeople.add(m.id));
+      // 예약만 하고 실제 배정은 루프에서 처리 — units에 reservedFor 표시
+      wu._reservedFor = area.id;
+    }
   });
 
   areasSorted.forEach(area=>{
@@ -1073,6 +1095,22 @@ function generateDraft(){
 
     const hasWorker = () => assignments[area.id].some(pid=>{ const p=state.people.find(x=>x.id===pid); return p?.category==='worker'; });
     const isWorkerUnit = (u) => u.members.every(m=>m.category==='worker');
+    const hasWorkerMember = (u) => u.members.some(m=>m.category==='worker');
+
+    // 사역자 필수 구역: 예약된 사역자 유닛 또는 남은 사역자 유닛 먼저 배정
+    if(area.requireWorker && !hasWorker() && filled < area.capacity){
+      const reservedIdx = remainingUnits.findIndex(u=>u._reservedFor===area.id);
+      const workerUnitIdx = reservedIdx !== -1 ? reservedIdx
+        : remainingUnits.findIndex(u=>hasWorkerMember(u) && u.members.length <= area.capacity - filled);
+      if(workerUnitIdx !== -1){
+        const wu = remainingUnits[workerUnitIdx];
+        assignments[area.id].push(...wu.members.map(m=>m.id));
+        wu.members.forEach(m=>assignedPeople.add(m.id));
+        currentLevelSum += wu.members.reduce((s,m)=>s+m.level,0);
+        filled += wu.members.length;
+        remainingUnits.splice(workerUnitIdx,1);
+      }
+    }
     const teamsInArea = () => new Set(assignments[area.id].map(pid=>state.people.find(p=>p.id===pid)?.team||''));
 
     // 팀 밸런스 점수: 초등/중고등 팀이 구역에 없으면 해당 팀 유닛 최우선
@@ -1128,6 +1166,8 @@ function generateDraft(){
       const u = remainingUnits[i];
       const size = u.members.length;
       if(filled + size > area.capacity){ i++; continue; }
+      // 다른 구역에 예약된 사역자 유닛은 건너뜀
+      if(u._reservedFor && u._reservedFor !== area.id){ i++; continue; }
       const genderOk = (areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq)) && genderMixOk(u);
       const noRepeat = u.members.every(m=> lastMap[m.id] !== area.id);
       const workerOk = !isWorkerUnit(u) || !hasWorker();
@@ -1149,6 +1189,7 @@ function generateDraft(){
         const u = remainingUnits[i];
         const size = u.members.length;
         if(filled + size > area.capacity){ i++; continue; }
+        if(u._reservedFor && u._reservedFor !== area.id){ i++; continue; }
         const genderOk = (areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq)) && genderMixOk(u);
         const workerOk = !isWorkerUnit(u) || !hasWorker();
         if(genderOk && workerOk){
@@ -1612,6 +1653,17 @@ function bindEvents(){
         if(!area) return;
         area.isIndoor = val;
         await updateAreaDB(area);
+        render();
+      };
+    });
+
+    document.querySelectorAll('[data-require-worker]').forEach(b=>{
+      b.onclick = async ()=>{
+        const area = state.areas.find(a=>String(a.id)===String(b.dataset.requireWorker));
+        if(!area) return;
+        area.requireWorker = !area.requireWorker;
+        await updateAreaDB(area);
+        toast(`${area.name} 사역자 ${area.requireWorker?'필수':'선택'}으로 변경했어요.`);
         render();
       };
     });
