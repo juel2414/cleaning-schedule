@@ -1032,7 +1032,8 @@ function generateDraft(){
   // 점검자 배정 준비: 점검자별로 담당 구역 목록 수집
   const placedInspectors = new Set();
 
-  let remainingUnits = [...units];
+  // 매 생성마다 다른 결과를 위해 초기 순서 셔플
+  let remainingUnits = [...units].sort(()=>Math.random()-0.5);
 
   areasSorted.forEach(area=>{
     // 고정인원 먼저 배치
