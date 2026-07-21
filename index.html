@@ -933,7 +933,10 @@ function renderDraftBoard(entry, editable){
         </div>
         <div class="row">
           ${editable && entry.status==='draft' ? `<button class="btn ghost" id="regenBtn">다시 생성</button><button class="btn" id="confirmBtn">확정 저장</button>` : ''}
-          <button class="btn ghost" id="exportImgBtn">이미지로 저장</button>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <input id="exportTitle" type="text" value="${entry.month} 본부 건물 청소당번표" style="font-size:12px;padding:5px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);width:200px;" placeholder="이미지 제목">
+            <button class="btn ghost" id="exportImgBtn">이미지로 저장</button>
+          </div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border-radius:10px;margin-bottom:12px;">
@@ -1775,7 +1778,7 @@ function bindEvents(){
   });
 }
 
-function exportBoardImage(){
+async function exportBoardImage(){
   if(!state.draft) return;
   toast('이미지 생성 중...');
 
@@ -1795,71 +1798,101 @@ function exportBoardImage(){
     return { area, members, nonWorkers, workers, inspector };
   });
 
+  const titleText = document.getElementById('exportTitle')?.value || `${entry.month} 본부 건물 청소당번표`;
+
+  // 누끼 이미지 — base64로 변환해서 html2canvas taint 우회
+  const nukkiFiles = ['주님한분5-Photoroom.png','DSC02220-Photoroom.png','IMG_7110-Photoroom.png','S3_01057-Photoroom.png'];
+  const nukkiSrc = './images/누끼/' + nukkiFiles[Math.floor(Math.random()*nukkiFiles.length)];
+  const nukkiB64 = await fetch(nukkiSrc).then(r=>r.blob()).then(blob=>new Promise(res=>{
+    const reader = new FileReader();
+    reader.onload = ()=>res(reader.result);
+    reader.onerror = ()=>res('');
+    reader.readAsDataURL(blob);
+  })).catch(()=>'');
+
   // 한 사람 이름 HTML (팀별 색상)
   const nameHtml = (p) => {
-    const color = p.team==='초등' ? '#e67e00' : p.team==='선교한국' ? '#2563eb' : '#111';
-    return `<span style="color:${color};font-weight:${p.team==='초등'||p.team==='선교한국'?'700':'400'}">${p.name}</span>`;
+    const color = p.team==='초등' ? '#f97316' : p.team==='선교한국' ? '#3b82f6' : '#1f2937';
+    const bold = p.team==='초등' || p.team==='선교한국';
+    return `<span style="color:${color};font-weight:${bold?'700':'400'}">${p.name}</span>`;
   };
 
-  // 담당자 셀 내용
   const assigneeHtml = (row) => {
     const parts = row.nonWorkers.map(nameHtml);
-    if(row.workers.length > 0) parts.push('/ ' + row.workers.map(p=>p.name).join(' '));
+    if(row.workers.length > 0) parts.push('<span style="color:#9ca3af"> / </span>' + row.workers.map(p=>`<span style="color:#6b7280">${p.name}</span>`).join(' '));
     return parts.join(' ') || '-';
   };
 
-  // 표를 2열로 분할
   const half = Math.ceil(rows.length / 2);
   const left = rows.slice(0, half);
   const right = rows.slice(half);
 
-  const HEADER_BG = '#4f46e5';
-  const STRIPE_BG = '#f5f4ff';
-  const BORDER = '#e2e1f5';
+  // 귀여운 파스텔 팔레트
+  const ACCENT   = '#7c6ff7';
+  const HEADER_BG= '#ede9fe';
+  const HEADER_TX= '#4c1d95';
+  const STRIPE   = '#faf8ff';
+  const BORDER   = '#ddd6fe';
+  const BG       = '#ffffff';
 
-  const headerStyle = `background:${HEADER_BG};color:#fff;font-weight:700;font-size:13px;padding:9px 14px;text-align:center;letter-spacing:0.03em;`;
-  const makeRows = (list) => list.map((row, i)=>{
-    const bg = i % 2 === 1 ? `background:${STRIPE_BG};` : '';
-    const cell = `padding:8px 14px;font-size:13px;vertical-align:middle;border-bottom:1px solid ${BORDER};${bg}`;
-    const areaCell = cell + 'text-align:center;font-size:12px;color:#374151;max-width:100px;word-break:keep-all;line-height:1.5;';
-    const nameCell = cell + 'text-align:left;';
-    const inspCell = cell + 'text-align:center;color:#4f46e5;font-weight:600;';
+  const makeRows = (list) => list.map((row, i) => {
+    const bg = i % 2 === 1 ? STRIPE : '#fff';
+    const base = `padding:8px 13px;font-size:12.5px;vertical-align:middle;border-bottom:1px solid ${BORDER};background:${bg};`;
+    const areaC = base + `text-align:center;color:#374151;max-width:95px;word-break:keep-all;line-height:1.5;font-weight:500;`;
+    const nameC = base + `text-align:left;`;
+    const inspC = base + `text-align:center;color:${ACCENT};font-weight:700;font-size:12px;`;
     return `<tr>
-      <td style="${areaCell}">${row.area.name}</td>
-      <td style="${nameCell}">${assigneeHtml(row)}</td>
-      <td style="${inspCell}">${row.inspector ? row.inspector.name : ''}</td>
+      <td style="${areaC}">${row.area.name}</td>
+      <td style="${nameC}">${assigneeHtml(row)}</td>
+      <td style="${inspC}">${row.inspector ? row.inspector.name : ''}</td>
     </tr>`;
   }).join('');
 
+  const thStyle = `background:${HEADER_BG};color:${HEADER_TX};font-weight:800;font-size:12.5px;padding:10px 13px;text-align:center;letter-spacing:0.04em;border-bottom:2px solid ${ACCENT};`;
   const makeTable = (list) => `
-    <table style="border-collapse:collapse;flex:1;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(79,70,229,0.10);border:1.5px solid ${BORDER};">
+    <table style="border-collapse:collapse;flex:1;border-radius:16px;overflow:hidden;border:1.5px solid ${BORDER};box-shadow:0 4px 18px rgba(124,111,247,0.10);">
       <thead><tr>
-        <th style="${headerStyle}width:90px;">청소구역</th>
-        <th style="${headerStyle}">담당자</th>
-        <th style="${headerStyle}width:70px;">점검자</th>
+        <th style="${thStyle}min-width:85px;">청소구역</th>
+        <th style="${thStyle}">담당자</th>
+        <th style="${thStyle}min-width:62px;">점검자</th>
       </tr></thead>
       <tbody>${makeRows(list)}</tbody>
     </table>`;
 
+  const nukkiTag = nukkiB64
+    ? `<img src="${nukkiB64}" style="height:130px;object-fit:contain;display:block;align-self:flex-end;flex-shrink:0;" />`
+    : `<div style="width:100px;"></div>`;
+
   const html = `
-  <div style="font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:#fafaff;padding:36px 32px;display:inline-block;min-width:960px;">
-    <div style="text-align:center;margin-bottom:24px;">
-      <div style="display:inline-block;border-bottom:3px solid ${HEADER_BG};padding-bottom:8px;">
-        <h1 style="font-size:28px;font-weight:900;color:#1e1b4b;margin:0;letter-spacing:-0.02em;">${entry.month} 본부 건물 청소당번표</h1>
+  <div style="font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:${BG};padding:32px 32px 28px;display:inline-block;min-width:980px;border-radius:20px;">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px;">
+      <div style="width:130px;flex-shrink:0;"></div>
+      <div style="text-align:center;flex:1;">
+        <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="display:inline-block;width:28px;height:4px;background:${ACCENT};border-radius:2px;"></span>
+          <h1 style="font-size:26px;font-weight:900;color:#2d1b69;margin:0;letter-spacing:-0.01em;">${titleText}</h1>
+          <span style="display:inline-block;width:28px;height:4px;background:${ACCENT};border-radius:2px;"></span>
+        </div>
+        <div style="display:flex;justify-content:center;gap:6px;">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#c4b5fd;"></span>
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ACCENT};"></span>
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#c4b5fd;"></span>
+        </div>
       </div>
+      <div style="width:130px;flex-shrink:0;display:flex;justify-content:flex-end;">${nukkiTag}</div>
     </div>
-    <div style="display:flex;gap:20px;align-items:flex-start;">
+    <div style="display:flex;gap:16px;align-items:flex-start;">
       ${makeTable(left)}
       ${makeTable(right)}
     </div>
   </div>`;
 
   const wrapper = document.createElement('div');
-  wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;';
+  wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;';
   wrapper.innerHTML = html;
   document.body.appendChild(wrapper);
 
-  html2canvas(wrapper.firstElementChild, { backgroundColor:'#ffffff', scale:2 }).then(canvas=>{
+  html2canvas(wrapper.firstElementChild, { backgroundColor:'#ffffff', scale:2, useCORS:true }).then(canvas=>{
     document.body.removeChild(wrapper);
     const link = document.createElement('a');
     link.download = `청소당번표_${entry.month.replace(/\s/g,'')}.png`;
