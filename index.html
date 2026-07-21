@@ -943,7 +943,7 @@ function renderDraftBoard(entry, editable){
           </div>
         </div>
         <div style="font-size:13px;font-weight:700;color:${barColor};">${pct}%</div>
-        ${unassigned.length>0 ? `<div style="font-size:12px;color:var(--red);font-weight:600;">미배정 ${unassigned.filter(p=>p.category!=='worker').length}명</div>` : '<div style="font-size:12px;color:var(--navy);font-weight:600;">전원 배정 완료 ✓</div>'}
+        ${unassigned.length>0 ? `<div style="font-size:12px;color:var(--red);font-weight:600;">미배정 ${unassigned.length}명</div>` : '<div style="font-size:12px;color:var(--navy);font-weight:600;">전원 배정 완료 ✓</div>'}
       </div>
       ${entry.notes && entry.notes.length ? `<div class="note">${entry.notes.join('<br>')}</div>` : ''}
       <div id="captureArea">
