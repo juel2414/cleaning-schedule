@@ -1153,6 +1153,9 @@ function generateDraft(){
       return null;
     };
     const genderMixOk = (u) => {
+      // 구역에 성별 필터가 있으면 사역자 포함 모든 멤버에 적용
+      if(areaGenderReq) return u.members.every(m=>m.gender===areaGenderReq);
+      // 성별 필터 없으면 비사역자끼리 성별 통일
       const nonWorkers = u.members.filter(m=>m.category!=='worker');
       if(nonWorkers.length===0) return true;
       const areaGender = nonWorkerGender();
