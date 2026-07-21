@@ -797,12 +797,38 @@ function renderAreasTab(){
           const diff = totalPeople - totalCap;
           const color = diff>=0 ? 'var(--navy)' : 'var(--red)';
           const diffLabel = diff>0 ? `+${diff} 여유` : diff<0 ? `${diff} 부족` : '딱 맞음';
-          return `<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:10px;padding:8px 14px;">
+          const totalLevelPeople = state.people.reduce((s,p)=>s+(p.level||0),0);
+          const totalLevelAreas = state.areas.reduce((s,a)=>s+(a.requiredLevel||0),0);
+          const lvDiff = totalLevelPeople - totalLevelAreas;
+          const lvColor = lvDiff>=0 ? 'var(--navy)' : 'var(--red)';
+          const lvLabel = lvDiff>0 ? `+${lvDiff} 여유` : lvDiff<0 ? `${lvDiff} 부족` : '딱 맞음';
+          const lvDist = [1,2,3,4,5].map(lv=>{
+            const cnt = state.people.filter(p=>(p.level||0)===lv).length;
+            return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+              <span style="font-size:11px;color:var(--muted);">Lv.${lv}</span>
+              <span style="font-size:15px;font-weight:700;color:var(--ink);">${cnt}명</span>
+            </div>`;
+          }).join('<div style="width:1px;background:var(--border);align-self:stretch;"></div>');
+          return `
+          <div style="display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:10px;padding:8px 14px;">
             <span style="font-size:13px;color:var(--muted);">청소 필요 인원</span>
             <span style="font-size:18px;font-weight:800;color:var(--ink);">${totalCap}명</span>
             <span style="font-size:13px;color:var(--muted);">청소 가능 인원</span>
             <span style="font-size:18px;font-weight:800;color:var(--ink);">${totalPeople}명</span>
             <span style="font-size:12px;font-weight:700;color:${color};background:${diff>=0?'var(--blue-light)':'var(--red-light)'};padding:2px 8px;border-radius:20px;">${diffLabel}</span>
+          </div>
+          <div style="background:var(--surface);border-radius:10px;padding:12px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:12px;">
+            <div style="display:flex;gap:12px;align-items:center;">${lvDist}</div>
+            <div style="width:1px;background:var(--border);align-self:stretch;"></div>
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <span style="font-size:11px;color:var(--muted);">인원 레벨 합계</span>
+              <span style="font-size:15px;font-weight:700;color:var(--ink);">${totalLevelPeople}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <span style="font-size:11px;color:var(--muted);">구역 레벨 합계</span>
+              <span style="font-size:15px;font-weight:700;color:var(--ink);">${totalLevelAreas}</span>
+            </div>
+            <span style="font-size:12px;font-weight:700;color:${lvColor};background:${lvDiff>=0?'var(--blue-light)':'var(--red-light)'};padding:2px 8px;border-radius:20px;">${lvLabel}</span>
           </div>`;
         })()}
       </div>
