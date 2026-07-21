@@ -821,18 +821,18 @@ function renderAreasTab(){
             <div style="font-size:12px;font-weight:700;color:var(--navy);letter-spacing:.3px;">레벨 현황</div>
             <div style="display:flex;gap:10px;align-items:center;">${lvDist}</div>
             <div style="width:100%;height:1px;background:var(--border);"></div>
-            <div style="display:flex;justify-content:space-between;gap:12px;">
-              <div style="display:flex;flex-direction:column;gap:2px;align-items:center;">
-                <span style="font-size:10px;color:var(--muted);">인원 레벨 합</span>
-                <span style="font-size:17px;font-weight:800;color:var(--ink);">${totalLevelPeople}</span>
+            <div style="display:flex;justify-content:space-between;gap:8px;">
+              <div style="display:flex;flex-direction:column;gap:3px;align-items:center;background:var(--blue-light);border-radius:10px;padding:8px 14px;flex:1;">
+                <span style="font-size:10px;color:var(--navy);font-weight:600;">인원 레벨 합</span>
+                <span style="font-size:26px;font-weight:900;color:var(--navy);line-height:1;">${totalLevelPeople}</span>
               </div>
-              <div style="display:flex;flex-direction:column;gap:2px;align-items:center;">
-                <span style="font-size:10px;color:var(--muted);">구역 레벨 합</span>
-                <span style="font-size:17px;font-weight:800;color:var(--ink);">${totalLevelAreas}</span>
+              <div style="display:flex;flex-direction:column;gap:3px;align-items:center;background:var(--surface);border-radius:10px;padding:8px 14px;flex:1;">
+                <span style="font-size:10px;color:var(--muted);font-weight:600;">구역 레벨 합</span>
+                <span style="font-size:26px;font-weight:900;color:var(--ink);line-height:1;">${totalLevelAreas}</span>
               </div>
-              <div style="display:flex;flex-direction:column;gap:2px;align-items:center;">
-                <span style="font-size:10px;color:var(--muted);">차이</span>
-                <span style="font-size:14px;font-weight:700;color:${lvColor};">${lvLabel}</span>
+              <div style="display:flex;flex-direction:column;gap:3px;align-items:center;background:${lvDiff>=0?'var(--blue-light)':'var(--red-light)'};border-radius:10px;padding:8px 12px;flex:1;">
+                <span style="font-size:10px;color:${lvColor};font-weight:600;">차이</span>
+                <span style="font-size:16px;font-weight:800;color:${lvColor};line-height:1;">${lvLabel}</span>
               </div>
             </div>
           </div>`;
