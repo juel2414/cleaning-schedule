@@ -880,8 +880,8 @@ function renderDraftBoard(entry, editable){
 
   const unassigned = state.people.filter(p=>!Object.values(entry.assignments).flat().includes(p.id));
   const assignedAll = Object.values(entry.assignments).flat();
-  const totalPeople = state.people.filter(p=>p.category!=='worker').length;
-  const assignedCount = state.people.filter(p=>p.category!=='worker' && assignedAll.includes(p.id)).length;
+  const totalPeople = state.people.length;
+  const assignedCount = state.people.filter(p=>assignedAll.includes(p.id)).length;
   const totalCapacity = state.areas.reduce((s,a)=>s+a.capacity,0);
   const pct = totalPeople>0 ? Math.round(assignedCount/totalPeople*100) : 0;
   const barColor = pct===100 ? 'var(--navy)' : pct>=80 ? 'var(--blue)' : 'var(--red)';
