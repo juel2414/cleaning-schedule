@@ -609,19 +609,19 @@ function renderPeopleTab(){
   let rows = '';
   const usedIds = new Set();
   if(f==='all'){
-    const workers = state.people.filter(p=>p.category==='worker');
+    const workers = applySort(state.people.filter(p=>p.category==='worker'));
     if(workers.length>0){
       rows += `<div class="section-label">🔧 사역자 (${workers.length}명)</div>`;
       rows += renderWithGender(workers, usedIds);
     }
     state._sections.forEach(s=>{
-      const group = state.people.filter(p=>p.team===s&&p.category!=='worker');
+      const group = applySort(state.people.filter(p=>p.team===s&&p.category!=='worker'));
       if(group.length>0){
         rows += `<div class="section-label">📌 ${s} (${group.length}명)</div>`;
         rows += renderWithGender(group, usedIds);
       }
     });
-    const etc = state.people.filter(p=>!usedIds.has(p.id));
+    const etc = applySort(state.people.filter(p=>!usedIds.has(p.id)));
     if(etc.length>0){
       rows += `<div class="section-label">👤 기타 (${etc.length}명)</div>`;
       rows += renderWithGender(etc, null);
