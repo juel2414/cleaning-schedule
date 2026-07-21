@@ -1062,24 +1062,34 @@ function generateDraft(){
     const hasWorker = () => assignments[area.id].some(pid=>{ const p=state.people.find(x=>x.id===pid); return p?.category==='worker'; });
     const isWorkerUnit = (u) => u.members.every(m=>m.category==='worker');
     const teamsInArea = () => new Set(assignments[area.id].map(pid=>state.people.find(p=>p.id===pid)?.team||''));
-    const teamDiversityBonus = (u) => u.members.some(m=>!teamsInArea().has(m.team||'')) ? -1 : 0;
+
+    // 팀 밸런스 점수: 초등/중고등 팀이 구역에 없으면 해당 팀 유닛 최우선
+    const TARGET_TEAMS = ['중고등', '초등'];
+    const teamDiversityScore = (u) => {
+      const present = teamsInArea();
+      const missingTargets = TARGET_TEAMS.filter(t => !present.has(t));
+      const unitTeams = new Set(u.members.map(m => m.team || ''));
+      if(missingTargets.some(t => unitTeams.has(t))) return -2; // 없는 핵심 팀을 채움
+      if(u.members.some(m => !present.has(m.team || ''))) return -1; // 새 팀 추가
+      return 0;
+    };
 
     // 배정 때마다 남은 레벨 필요량 / 남은 인원수로 목표 레벨을 재계산해 가장 근접한 유닛 선택
-    // 레벨 합이 목표를 초과하는 유닛은 후순위
+    // 팀 밸런스(초등·중고등 혼합) 1순위, 레벨 초과 방지 2순위, 레벨 근접도 3순위
     const sortByBalance = () => {
       const remainingSlots = area.capacity - filled;
       if(areaReqLevel > 0 && remainingSlots > 0){
         const targetLevel = Math.max(0, areaReqLevel - currentLevelSum) / remainingSlots;
         const wouldOvershoot = (u) => currentLevelSum + u.members.reduce((s,m)=>s+m.level,0) > areaReqLevel ? 1 : 0;
         remainingUnits.sort((a,b)=>
+          (teamDiversityScore(a) - teamDiversityScore(b)) ||
           (wouldOvershoot(a) - wouldOvershoot(b)) ||
-          (Math.abs(a.level - targetLevel) - Math.abs(b.level - targetLevel)) ||
-          (teamDiversityBonus(a) - teamDiversityBonus(b))
+          (Math.abs(a.level - targetLevel) - Math.abs(b.level - targetLevel))
         );
       } else {
         remainingUnits.sort((a,b)=>
-          (unitScore(a) - unitScore(b)) ||
-          (teamDiversityBonus(a) - teamDiversityBonus(b))
+          (teamDiversityScore(a) - teamDiversityScore(b)) ||
+          (unitScore(a) - unitScore(b))
         );
       }
     };
