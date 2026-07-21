@@ -752,7 +752,7 @@ function renderAreasTab(){
       <td>
         <div class="stepper">
           <button data-step-area="${a.id}" data-step-field="requiredLevel" data-step-dir="-1">−</button>
-          <input class="val" type="number" data-stepper-input data-step-area="${a.id}" data-step-field="requiredLevel" value="${a.requiredLevel||0}" style="min-width:28px;">
+          <input class="val" type="text" inputmode="numeric" pattern="[0-9]*" data-stepper-input data-step-area="${a.id}" data-step-field="requiredLevel" value="${a.requiredLevel||0}" style="min-width:28px;">
           <button data-step-area="${a.id}" data-step-field="requiredLevel" data-step-dir="1">+</button>
         </div>
       </td>
@@ -1416,7 +1416,10 @@ function bindEvents(){
         render();
       };
       inp.onblur = save;
-      inp.onkeydown = e=>{ if(e.key==='Enter'){ inp.blur(); } };
+      inp.onkeydown = e=>{
+        if(e.key==='Enter'){ inp.blur(); return; }
+        if(!/[0-9]|Backspace|Delete|ArrowLeft|ArrowRight|Tab/.test(e.key)) e.preventDefault();
+      };
     });
 
     // 난이도 토글
