@@ -254,6 +254,9 @@
   .status-pill.confirmed{background:#dbeafe;color:var(--navy);}
   .history-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer;}
   .history-item:hover{background:var(--blue-light);}
+  .project-tab{background:var(--surface);border:1.5px solid var(--line);border-radius:20px;padding:4px 14px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;}
+  .project-tab:hover{border-color:var(--blue);color:var(--navy);}
+  .project-tab.active{background:var(--navy);border-color:var(--navy);color:#fff;}
 
   /* ── UPLOAD ── */
   .upload-box{border:2px dashed var(--line);border-radius:12px;padding:26px;text-align:center;color:var(--muted);cursor:pointer;font-size:13px;background:var(--surface);}
@@ -298,7 +301,8 @@ const state = {
   people: [],
   areas: [],
   history: [],
-  draft: null,
+  projects: [],     // 모든 초안 프로젝트
+  draft: null,      // 현재 선택된 프로젝트 (projects 중 하나)
   tab: 'people',
   loaded: false,
   _selectedPeople: new Set(),
@@ -316,7 +320,7 @@ function dbAreaToState(a){
   return { id:a.id, name:a.name, capacity:a.capacity, difficulty:a.difficulty, genderFilter:a.gender_filter||'all', fixedPeople:a.fixed_people||[], isIndoor:a.is_indoor!==false, requiredLevel:a.required_level||0, inspectorId:a.inspector_id||null, requireWorker:a.require_worker||false };
 }
 function dbScheduleToState(s){
-  return { id:s.id, month:s.month, assignments:s.assignments||{}, status:s.status, notes:s.notes||[], createdAt: new Date(s.created_at).getTime() };
+  return { id:s.id, month:s.month, label:s.label||null, assignments:s.assignments||{}, status:s.status, notes:s.notes||[], createdAt: new Date(s.created_at).getTime() };
 }
 
 async function loadAll(){
@@ -330,8 +334,9 @@ async function loadAll(){
     state.areas = (areas||[]).map(dbAreaToState);
     const allSchedules = (schedules||[]).map(dbScheduleToState);
     state.history = allSchedules.filter(s=>s.status==='confirmed');
-    const draft = allSchedules.find(s=>s.status==='draft');
-    state.draft = draft || null;
+    state.projects = allSchedules.filter(s=>s.status==='draft');
+    if(!state.draft && state.projects.length>0) state.draft = state.projects[0];
+    else if(state.draft) state.draft = state.projects.find(p=>p.id===state.draft.id) || state.projects[0] || null;
   }catch(e){
     toast('Supabase 연결에 문제가 있어요.');
   }
@@ -360,9 +365,9 @@ async function updateAreaDB(a){ await sb.from('areas').update({name:a.name,capac
 
 async function createDraftDB(draft){
   const {data, error} = await sb.from('schedules').insert({
-    month:draft.month, assignments:draft.assignments, status:'draft', notes:draft.notes
+    month:draft.month, label:draft.label||null, assignments:draft.assignments, status:'draft', notes:draft.notes
   }).select().single();
-  if(!error && data) draft.id = data.id;
+  if(!error && data){ draft.id = data.id; draft.createdAt = new Date(data.created_at).getTime(); }
 }
 async function updateDraftDB(){
   if(!state.draft) return;
@@ -854,15 +859,39 @@ function renderAreasTab(){
 }
 
 // ---------- generate tab ----------
+function renderProjectList(){
+  const tabs = state.projects.map(p=>{
+    const isActive = state.draft?.id === p.id;
+    const label = p.label || p.month;
+    return `<button class="project-tab${isActive?' active':''}" data-project-id="${p.id}">${label}</button>`;
+  }).join('');
+  return `
+    <div class="card" style="padding:12px 18px;margin-bottom:0;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:0.04em;">📁 프로젝트</span>
+        ${tabs}
+        <button class="btn ghost small" id="newProjectBtn">+ 새 프로젝트</button>
+      </div>
+      <div id="newProjectForm" style="display:none;margin-top:10px;display:none;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input id="newProjectName" type="text" placeholder="프로젝트 이름 (예: 8월 수련회)" style="font-size:13px;padding:6px 10px;border:1.5px solid var(--line);border-radius:8px;flex:1;min-width:160px;">
+        <input id="newProjectMonth" type="month" value="${new Date().toISOString().slice(0,7)}" style="font-size:13px;padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;">
+        <button class="btn small" id="newProjectConfirmBtn">만들기</button>
+        <button class="btn ghost small" id="newProjectCancelBtn">취소</button>
+      </div>
+    </div>`;
+}
+
 function renderGenerateTab(){
+  const projectListHtml = renderProjectList();
   if(!state.draft){
     const totalPeople = state.people.length;
     const totalCap = state.areas.reduce((s,a)=>s+a.capacity,0);
     const matched = totalPeople>0 && state.areas.length>0 && totalPeople===totalCap;
     const diff = totalPeople - totalCap;
     return `
+      ${projectListHtml}
       <div class="card">
-        <h2>이번 달 배정표 만들기</h2>
+        <h2>배정표 만들기</h2>
         <p class="desc">등록된 인원과 구역을 바탕으로 조건에 맞는 초안을 자동으로 생성해요. 생성 후에는 자유롭게 수정할 수 있어요.</p>
         <div style="display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:10px;padding:10px 16px;margin-bottom:14px;flex-wrap:wrap;">
           <span style="font-size:13px;color:var(--muted);">청소 필요 인원</span>
@@ -880,7 +909,7 @@ function renderGenerateTab(){
       </div>
     `;
   }
-  return renderDraftBoard(state.draft, true);
+  return `${projectListHtml}${renderDraftBoard(state.draft, true)}`;
 }
 
 function renderDraftBoard(entry, editable){
@@ -928,13 +957,14 @@ function renderDraftBoard(entry, editable){
     <div class="card">
       <div class="board-title">
         <div>
-          <div class="month-label">${monthStr}</div>
+          <div class="month-label">${entry.label || monthStr}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:1px;">${entry.label ? monthStr : ''}</div>
           <span class="status-pill ${entry.status}">${entry.status==='draft'?'초안':'확정'}</span>
         </div>
         <div class="row">
-          ${editable && entry.status==='draft' ? `<button class="btn ghost" id="regenBtn">다시 생성</button><button class="btn" id="confirmBtn">확정 저장</button>` : ''}
+          ${editable && entry.status==='draft' ? `<button class="btn ghost" id="regenBtn">다시 생성</button><button class="btn" id="confirmBtn">확정 저장</button><button class="btn ghost small danger" id="deleteProjectBtn" style="color:var(--red);">삭제</button>` : ''}
           <div style="display:flex;align-items:center;gap:6px;">
-            <input id="exportTitle" type="text" value="${entry.month} 본부 건물 청소당번표" style="font-size:12px;padding:5px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);width:200px;" placeholder="이미지 제목">
+            <input id="exportTitle" type="text" value="${entry.label || entry.month} 본부 건물 청소당번표" style="font-size:12px;padding:5px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);width:200px;" placeholder="이미지 제목">
             <button class="btn ghost" id="exportImgBtn">이미지로 저장</button>
           </div>
         </div>
@@ -1713,12 +1743,55 @@ function bindEvents(){
     });
   }
 
-  // generate tab
+  // generate tab — 프로젝트 탭 전환
+  document.querySelectorAll('[data-project-id]').forEach(btn=>{
+    btn.onclick = ()=>{
+      state.draft = state.projects.find(p=>p.id===btn.dataset.projectId) || null;
+      render();
+    };
+  });
+
+  // 새 프로젝트 버튼
+  const newProjectBtn = document.getElementById('newProjectBtn');
+  if(newProjectBtn){
+    newProjectBtn.onclick = ()=>{
+      const form = document.getElementById('newProjectForm');
+      if(form) { form.style.display = form.style.display==='none'?'flex':'none'; }
+    };
+  }
+  const newProjectCancelBtn = document.getElementById('newProjectCancelBtn');
+  if(newProjectCancelBtn){
+    newProjectCancelBtn.onclick = ()=>{ document.getElementById('newProjectForm').style.display='none'; };
+  }
+  const newProjectConfirmBtn = document.getElementById('newProjectConfirmBtn');
+  if(newProjectConfirmBtn){
+    newProjectConfirmBtn.onclick = async ()=>{
+      const name = document.getElementById('newProjectName').value.trim();
+      const month = document.getElementById('newProjectMonth').value;
+      if(!name){ toast('프로젝트 이름을 입력해주세요.'); return; }
+      const draft = { month, label:name, assignments:{}, notes:[], status:'draft' };
+      // 빈 구역 배정 초기화
+      state.areas.forEach(a=>{ draft.assignments[a.id]=[]; });
+      await createDraftDB(draft);
+      state.projects.push(draft);
+      state.draft = draft;
+      render();
+      toast(`"${name}" 프로젝트를 만들었어요.`);
+    };
+  }
+
   const genBtn = document.getElementById('genDraftBtn');
   if(genBtn){
     genBtn.onclick = async ()=>{
       const draft = generateDraft();
+      // 현재 활성 프로젝트에 덮어쓰기 vs 새로 생성
+      if(state.draft){
+        await deleteDraftDB(state.draft.id);
+        state.projects = state.projects.filter(p=>p.id!==state.draft.id);
+      }
+      draft.label = state.draft?.label || null;
       await createDraftDB(draft);
+      state.projects.push(draft);
       state.draft = draft;
       render();
     };
@@ -1727,8 +1800,12 @@ function bindEvents(){
   if(regenBtn){
     regenBtn.onclick = async ()=>{
       await deleteDraftDB(state.draft.id);
+      const oldLabel = state.draft.label;
+      state.projects = state.projects.filter(p=>p.id!==state.draft.id);
       const draft = generateDraft();
+      draft.label = oldLabel;
       await createDraftDB(draft);
+      state.projects.push(draft);
       state.draft = draft;
       render();
     };
@@ -1739,9 +1816,10 @@ function bindEvents(){
       await confirmDraftDB();
       state.draft.status='confirmed';
       state.history.push(state.draft);
-      state.draft = null;
+      state.projects = state.projects.filter(p=>p.id!==state.draft.id);
+      state.draft = state.projects[0] || null;
       render();
-      toast('이번 달 배정표를 확정했어요.');
+      toast('배정표를 확정했어요.');
     };
   }
   document.querySelectorAll('[data-remove-assign]').forEach(b=>{
@@ -1762,6 +1840,17 @@ function bindEvents(){
       render();
     };
   });
+  const deleteProjectBtn = document.getElementById('deleteProjectBtn');
+  if(deleteProjectBtn){
+    deleteProjectBtn.onclick = async ()=>{
+      if(!confirm(`"${state.draft.label||state.draft.month}" 프로젝트를 삭제할까요?`)) return;
+      await deleteDraftDB(state.draft.id);
+      state.projects = state.projects.filter(p=>p.id!==state.draft.id);
+      state.draft = state.projects[0] || null;
+      render();
+      toast('프로젝트를 삭제했어요.');
+    };
+  }
   const exportBtn = document.getElementById('exportImgBtn');
   if(exportBtn){
     exportBtn.onclick = ()=> exportBoardImage();
