@@ -1939,7 +1939,7 @@ async function exportBoardImage(){
 
   const thStyle = `background:#ede9fe;color:#4c1d95;font-weight:800;font-size:13px;padding:10px 14px;text-align:center;letter-spacing:0.04em;border-bottom:2px solid ${ACCENT};`;
   const makeTable = (list) => `
-    <table style="border-collapse:collapse;flex:1;border-radius:14px;overflow:hidden;border:1.5px solid ${BORDER};box-shadow:0 2px 12px rgba(109,40,217,0.08);background:#fff;">
+    <table style="border-collapse:collapse;flex:1;border-radius:14px;overflow:hidden;border:1.5px solid ${BORDER};box-shadow:0 2px 12px rgba(109,40,217,0.08);background:#fff;height:100%;">
       <thead><tr>
         <th style="${thStyle}min-width:90px;">청소구역</th>
         <th style="${thStyle}">담당자</th>
@@ -1952,10 +1952,13 @@ async function exportBoardImage(){
     ? `<img src="${nukkiB64}" style="height:180px;object-fit:contain;display:block;position:absolute;right:20px;bottom:0;filter:drop-shadow(0 4px 16px rgba(0,0,0,0.22));z-index:3;" />`
     : '';
 
+  // A4 가로 비율: 297:210 = 1.4143:1
+  const A4W = 900, A4H = Math.round(900 * 210 / 297); // 636px
+
   const html = `
-  <div style="font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:#f5f3ff;padding:0;display:inline-block;min-width:860px;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(109,40,217,0.13);">
-    <!-- 헤더 배너 (높이 충분히 확보) -->
-    <div style="position:relative;background:linear-gradient(120deg,#6d28d9 0%,#8b5cf6 55%,#a78bfa 100%);padding:22px 24px 0;min-height:180px;display:flex;align-items:center;">
+  <div style="font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:#f5f3ff;padding:0;width:${A4W}px;height:${A4H}px;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(109,40,217,0.13);display:flex;flex-direction:column;">
+    <!-- 헤더 배너 -->
+    <div style="position:relative;background:linear-gradient(120deg,#6d28d9 0%,#8b5cf6 55%,#a78bfa 100%);padding:22px 24px 0;height:180px;flex-shrink:0;display:flex;align-items:center;">
       <!-- 배경 원 장식 -->
       <div style="position:absolute;right:-30px;top:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,0.08);"></div>
       <div style="position:absolute;left:-20px;bottom:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.06);"></div>
@@ -1971,11 +1974,11 @@ async function exportBoardImage(){
           <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.5);"></span>
         </div>
       </div>
-      <!-- 누끼 (헤더 위로 튀어나옴) -->
+      <!-- 누끼 -->
       ${nukkiTag}
     </div>
-    <!-- 표 영역 -->
-    <div style="padding:16px 20px 22px;display:flex;gap:14px;align-items:flex-start;">
+    <!-- 표 영역: 나머지 높이 채움 -->
+    <div style="flex:1;padding:14px 20px 16px;display:flex;gap:14px;align-items:stretch;overflow:hidden;">
       ${makeTable(left)}
       ${makeTable(right)}
     </div>
