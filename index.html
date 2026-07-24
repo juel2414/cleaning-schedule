@@ -314,10 +314,10 @@ const state = {
 function saveSections(){ localStorage.setItem('people_sections', JSON.stringify(state._sections)); }
 
 function dbPersonToState(p){
-  return { id:p.id, name:p.name, gender:p.gender, category:p.category, team:p.team||'', level:p.level, mentorId:p.mentor_id, age:p.age||null };
+  return { id:p.id, name:p.name, gender:p.gender, category:p.category, team:p.team||'', role:p.role||null, mentorId:p.mentor_id, age:p.age||null };
 }
 function dbAreaToState(a){
-  return { id:a.id, name:a.name, capacity:a.capacity, difficulty:a.difficulty, genderFilter:a.gender_filter||'all', fixedPeople:a.fixed_people||[], isIndoor:a.is_indoor!==false, requiredLevel:a.required_level||0, inspectorId:a.inspector_id||null, requireWorker:a.require_worker||false };
+  return { id:a.id, name:a.name, capacity:a.capacity, difficulty:a.difficulty, genderFilter:a.gender_filter||'all', fixedPeople:a.fixed_people||[], isIndoor:a.is_indoor!==false, inspectorId:a.inspector_id||null, requireWorker:a.require_worker||false };
 }
 function dbScheduleToState(s){
   return { id:s.id, month:s.month, label:s.label||null, assignments:s.assignments||{}, status:s.status, notes:s.notes||[], createdAt: new Date(s.created_at).getTime() };
@@ -346,22 +346,22 @@ async function loadAll(){
 
 async function addPersonDB(p){
   const {data, error} = await sb.from('people').insert({
-    name:p.name, gender:p.gender, category:p.category, team:p.team, level:p.level, mentor_id:p.mentorId, age:p.age||null
+    name:p.name, gender:p.gender, category:p.category, team:p.team, role:p.role||null, mentor_id:p.mentorId, age:p.age||null
   }).select().single();
   if(!error && data) p.id = data.id;
 }
 async function deletePersonDB(id){ await sb.from('people').delete().eq('id', id); }
 async function clearMentorRefDB(mentorId){ await sb.from('people').update({mentor_id:null}).eq('mentor_id', mentorId); }
 async function updatePersonDB(p){
-  await sb.from('people').update({ name:p.name, gender:p.gender, category:p.category, team:p.team, level:p.level, mentor_id:p.mentorId||null, age:p.age||null }).eq('id', p.id);
+  await sb.from('people').update({ name:p.name, gender:p.gender, category:p.category, team:p.team, role:p.role||null, mentor_id:p.mentorId||null, age:p.age||null }).eq('id', p.id);
 }
 
 async function addAreaDB(a){
-  const {data, error} = await sb.from('areas').insert({ name:a.name, capacity:a.capacity, difficulty:a.difficulty, gender_filter:a.genderFilter||'all', fixed_people:a.fixedPeople||[], is_indoor:a.isIndoor!==false, required_level:a.requiredLevel||0, inspector_id:a.inspectorId||null }).select().single();
+  const {data, error} = await sb.from('areas').insert({ name:a.name, capacity:a.capacity, difficulty:a.difficulty, gender_filter:a.genderFilter||'all', fixed_people:a.fixedPeople||[], is_indoor:a.isIndoor!==false, inspector_id:a.inspectorId||null }).select().single();
   if(!error && data) a.id = data.id;
 }
 async function deleteAreaDB(id){ await sb.from('areas').delete().eq('id', id); }
-async function updateAreaDB(a){ await sb.from('areas').update({name:a.name,capacity:a.capacity,difficulty:a.difficulty,gender_filter:a.genderFilter,fixed_people:a.fixedPeople,is_indoor:a.isIndoor!==false,required_level:a.requiredLevel||0,inspector_id:a.inspectorId||null,require_worker:a.requireWorker||false}).eq('id',a.id); }
+async function updateAreaDB(a){ await sb.from('areas').update({name:a.name,capacity:a.capacity,difficulty:a.difficulty,gender_filter:a.genderFilter,fixed_people:a.fixedPeople,is_indoor:a.isIndoor!==false,inspector_id:a.inspectorId||null,require_worker:a.requireWorker||false}).eq('id',a.id); }
 
 async function createDraftDB(draft){
   const {data, error} = await sb.from('schedules').insert({
@@ -514,8 +514,8 @@ function renderPersonRow(p, isMentee){
     <span class="editable-cell" data-toggle="team" data-id="${p.id}" title="클릭해서 수정" style="min-width:50px;">
       <span style="font-size:12px;color:${p.team?'var(--ink)':'var(--muted)'};">${p.team||'팀없음'}</span><span class="edit-hint">✎</span>
     </span>
-    <span class="editable-cell" data-toggle="level" data-id="${p.id}" title="클릭해서 수정">
-      <span style="font-size:12px;font-weight:700;color:var(--moss-dark);">Lv.${p.level}</span><span class="edit-hint">✎</span>
+    <span class="editable-cell" data-toggle="role" data-id="${p.id}" title="클릭해서 수정">
+      ${p.role==='리더' ? `<span style="font-size:11px;font-weight:800;color:#fff;background:#7c3aed;border-radius:8px;padding:2px 8px;">리더</span>` : p.role==='멋쟁이' ? `<span style="font-size:11px;font-weight:800;color:#fff;background:#db2777;border-radius:8px;padding:2px 8px;">멋쟁이</span>` : `<span style="font-size:11px;color:var(--muted);">-</span>`}<span class="edit-hint">✎</span>
     </span>
     <span class="editable-cell" data-toggle="age" data-id="${p.id}" title="클릭해서 수정">
       <span style="font-size:12px;color:${p.age?'var(--ink)':'var(--muted)'};">${p.age?p.age+'세':'-'}</span><span class="edit-hint">✎</span>
@@ -548,8 +548,7 @@ function renderPeopleTab(){
     </div>
     <div class="indoor-toggle" style="flex-shrink:0;">
       <button class="${s0==='default'?'active':''}" data-people-sort="default">기본순</button>
-      <button class="${s0==='level-desc'?'active':''}" data-people-sort="level-desc">레벨 ↓</button>
-      <button class="${s0==='level-asc'?'active':''}" data-people-sort="level-asc">레벨 ↑</button>
+      <button class="${s0==='role-leader'?'active':''}" data-people-sort="role-leader">리더순</button>
     </div>
   </div>`;
 
@@ -568,8 +567,7 @@ function renderPeopleTab(){
 
   // 표시할 인원
   function applySort(arr){
-    if(state._peopleSort==='level-desc') return [...arr].sort((a,b)=>b.level-a.level);
-    if(state._peopleSort==='level-asc') return [...arr].sort((a,b)=>a.level-b.level);
+    if(state._peopleSort==='role-leader') return [...arr].sort((a,b)=>{ const r={'리더':0,'멋쟁이':1}; return (r[a.role]??2)-(r[b.role]??2); });
     return arr;
   }
   const visible = applySort(f==='all' ? state.people
@@ -644,7 +642,7 @@ function renderPeopleTab(){
       <select id="bulk_gender"><option value="">성별 변경...</option><option value="m">남</option><option value="f">여</option></select>
       <select id="bulk_category"><option value="">카테고리 변경...</option><option value="normal">일반</option><option value="mentor">멘토</option><option value="mentee">멘티</option><option value="worker">사역자</option></select>
       <input type="text" id="bulk_team" placeholder="팀 일괄 변경..." style="width:120px;">
-      <input type="number" id="bulk_level" placeholder="레벨" min="1" max="5" style="width:70px;">
+      <select id="bulk_role" style="width:90px;font-size:13px;"><option value="">역할 변경...</option><option value="리더">리더</option><option value="멋쟁이">멋쟁이</option><option value="없음">없음</option></select>
       <input type="number" id="bulk_age" placeholder="나이" min="1" max="120" style="width:70px;">
       <button class="btn small" id="bulkApplyBtn" style="background:#fff;color:var(--moss-dark);border-color:#fff;">일괄 적용</button>
       <button class="btn small" id="bulkDeleteBtn" style="background:#b5453a;border-color:#b5453a;color:#fff;">삭제</button>
@@ -677,7 +675,7 @@ function renderPeopleTab(){
           <option value="mentee">멘티</option><option value="worker">사역자</option>
         </select></label>
         <label class="f">팀<input type="text" id="p_team" placeholder="예: 1팀" style="width:80px"></label>
-        <label class="f">레벨<input type="number" id="p_level" value="1" min="1" max="5" style="width:55px"></label>
+        <label class="f">역할<select id="p_role" style="width:80px"><option value="">없음</option><option value="리더">리더</option><option value="멋쟁이">멋쟁이</option></select></label>
         <label class="f">나이<input type="number" id="p_age" placeholder="나이" min="1" max="120" style="width:60px"></label>
         <label class="f" id="mentorPickWrap" style="display:none">담당 멘토<select id="p_mentor"><option value="">선택</option>${mentors.map(m=>`<option value="${m.id}">${m.name}</option>`).join('')}</select></label>
         <button class="btn ghost small" id="cancelPersonBtn" style="align-self:flex-end;display:none;">취소</button>
@@ -705,7 +703,7 @@ function renderPeopleTab(){
         <span>아직 등록된 인원이 없어요.</span>
       </div>`:`
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 10px;display:grid;grid-template-columns:28px 1fr auto auto auto auto auto auto auto;gap:8px;">
-        <span></span><span>이름</span><span>성별</span><span>카테고리</span><span>팀</span><span>레벨</span><span>나이</span><span>담당멘토</span><span></span>
+        <span></span><span>이름</span><span>성별</span><span>카테고리</span><span>팀</span><span>역할</span><span>나이</span><span>담당멘토</span><span></span>
       </div>
       <div id="peopleList">${rows}</div>`}
     </div>
@@ -755,13 +753,6 @@ function renderAreasTab(){
           ${fixSelect}
         </div>
       </td>
-      <td>
-        <div class="stepper">
-          <button data-step-area="${a.id}" data-step-field="requiredLevel" data-step-dir="-1">−</button>
-          <input class="val" type="text" inputmode="numeric" pattern="[0-9]*" data-stepper-input data-step-area="${a.id}" data-step-field="requiredLevel" value="${a.requiredLevel||0}" style="min-width:28px;">
-          <button data-step-area="${a.id}" data-step-field="requiredLevel" data-step-dir="1">+</button>
-        </div>
-      </td>
       <td style="min-width:100px;">
         ${(()=>{
           const workers = state.people.filter(p=>p.category==='worker');
@@ -782,11 +773,10 @@ function renderAreasTab(){
   return `
     <div class="card">
       <h2>구역 추가</h2>
-      <p class="desc">구역별 필요 인원수와 난이도를 정해주세요. 난이도가 높을수록 레벨이 높은 인원이 배정돼요.</p>
+      <p class="desc">구역별 필요 인원수와 성별을 설정하세요.</p>
       <div class="row">
         <label class="f">구역명<input type="text" id="a_name" placeholder="예: 화장실"></label>
         <label class="f">필요 인원<input type="number" id="a_capacity" value="1" min="1" style="width:70px"></label>
-        <label class="f">구역 레벨<input type="number" id="a_required_level" value="0" min="0" style="width:70px"></label>
         <label class="f">구분<select id="a_indoor">
           <option value="true">실내</option>
           <option value="false">야외</option>
@@ -808,18 +798,6 @@ function renderAreasTab(){
           const diff = totalPeople - totalCap;
           const color = diff>=0 ? 'var(--navy)' : 'var(--red)';
           const diffLabel = diff>0 ? `+${diff} 여유` : diff<0 ? `${diff} 부족` : '딱 맞음';
-          const totalLevelPeople = state.people.reduce((s,p)=>s+(p.level||0),0);
-          const totalLevelAreas = state.areas.reduce((s,a)=>s+(a.requiredLevel||0),0);
-          const lvDiff = totalLevelPeople - totalLevelAreas;
-          const lvColor = lvDiff>=0 ? 'var(--navy)' : 'var(--red)';
-          const lvLabel = lvDiff>0 ? `+${lvDiff} 여유` : lvDiff<0 ? `${lvDiff} 부족` : '딱 맞음';
-          const lvDist = [1,2,3,4,5].map(lv=>{
-            const cnt = state.people.filter(p=>(p.level||0)===lv).length;
-            return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-              <span style="font-size:11px;color:var(--muted);">Lv.${lv}</span>
-              <span style="font-size:15px;font-weight:700;color:var(--ink);">${cnt}명</span>
-            </div>`;
-          }).join('<div style="width:1px;background:var(--border);align-self:stretch;"></div>');
           return `
           <div style="display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:10px;padding:8px 14px;">
             <span style="font-size:13px;color:var(--muted);">청소 필요 인원</span>
@@ -827,31 +805,12 @@ function renderAreasTab(){
             <span style="font-size:13px;color:var(--muted);">청소 가능 인원</span>
             <span style="font-size:18px;font-weight:800;color:var(--ink);">${totalPeople}명</span>
             <span style="font-size:12px;font-weight:700;color:${color};background:${diff>=0?'var(--blue-light)':'var(--red-light)'};padding:2px 8px;border-radius:20px;">${diffLabel}</span>
-          </div>
-          <div id="level-stats-popup" style="position:fixed;bottom:24px;right:20px;z-index:200;background:var(--card);border:1.5px solid var(--border);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.13);padding:14px 18px;display:flex;flex-direction:column;gap:10px;min-width:200px;">
-            <div style="font-size:12px;font-weight:700;color:var(--navy);letter-spacing:.3px;">레벨 현황</div>
-            <div style="display:flex;gap:10px;align-items:center;">${lvDist}</div>
-            <div style="width:100%;height:1px;background:var(--border);"></div>
-            <div style="display:flex;justify-content:space-between;gap:8px;">
-              <div style="display:flex;flex-direction:column;gap:3px;align-items:center;background:var(--blue-light);border-radius:10px;padding:8px 14px;flex:1;">
-                <span style="font-size:10px;color:var(--navy);font-weight:600;">인원 레벨 합</span>
-                <span style="font-size:26px;font-weight:900;color:var(--navy);line-height:1;">${totalLevelPeople}</span>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:3px;align-items:center;background:var(--surface);border-radius:10px;padding:8px 14px;flex:1;">
-                <span style="font-size:10px;color:var(--muted);font-weight:600;">구역 레벨 합</span>
-                <span style="font-size:26px;font-weight:900;color:var(--ink);line-height:1;">${totalLevelAreas}</span>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:3px;align-items:center;background:${lvDiff>=0?'var(--blue-light)':'var(--red-light)'};border-radius:10px;padding:8px 12px;flex:1;">
-                <span style="font-size:10px;color:${lvColor};font-weight:600;">차이</span>
-                <span style="font-size:16px;font-weight:800;color:${lvColor};line-height:1;">${lvLabel}</span>
-              </div>
-            </div>
           </div>`;
         })()}
       </div>
       ${state.areas.length===0 ? '<div class="empty">아직 등록된 구역이 없어요.</div>' : `
       <table>
-        <thead><tr><th>구역명</th><th>필요 인원</th><th>구분</th><th>성별</th><th>고정인원</th><th>구역 레벨</th><th>점검자</th><th></th></tr></thead>
+        <thead><tr><th>구역명</th><th>필요 인원</th><th>구분</th><th>성별</th><th>고정인원</th><th>점검자</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`}
     </div>
@@ -928,7 +887,7 @@ function renderDraftBoard(entry, editable){
         <div class="zone-head">
           <div>
             <span class="zone-name">${area.name}</span>
-            <span class="zone-meta"> · 필요 ${area.capacity}명 · 레벨 ${area.requiredLevel||0}</span>
+            <span class="zone-meta"> · 필요 ${area.capacity}명</span>
             ${area.inspectorId ? `<span style="font-size:11px;color:var(--navy);background:var(--blue-light);border-radius:10px;padding:1px 7px;margin-left:4px;">🔍 ${personById(area.inspectorId)?.name||''}</span>` : ''}
           </div>
           ${warn?`<span class="warn-badge">인원 ${assigned.length}/${area.capacity}</span>`:''}
@@ -938,7 +897,7 @@ function renderDraftBoard(entry, editable){
         <div class="add-select">
           <select data-add-to="${area.id}">
             <option value="">인원 추가...</option>
-            ${availablePeople.map(p=>`<option value="${p.id}">${p.name} (${catLabel(p.category)}·Lv${p.level})</option>`).join('')}
+            ${availablePeople.map(p=>`<option value="${p.id}">${p.name} (${catLabel(p.category)}${p.role?'·'+p.role:''})</option>`).join('')}
           </select>
         </div>`:''}
       </div>
@@ -1025,13 +984,12 @@ function buildUnits(){
       id: uid(),
       members,
       gender: m.gender,
-      level: Math.max(...members.map(x=>x.level)),
       teams: [...new Set(members.map(x=>x.team||''))]
     });
   });
   state.people.forEach(p=>{
     if(used.has(p.id)) return;
-    units.push({ id: uid(), members:[p], gender:p.gender, level:p.level, teams:[p.team||''] });
+    units.push({ id: uid(), members:[p], gender:p.gender, teams:[p.team||''] });
   });
   return units;
 }
@@ -1120,11 +1078,6 @@ function generateDraft(){
 
     let filled = assignments[area.id].length;
     const areaGenderReq = area.genderFilter && area.genderFilter !== 'all' ? area.genderFilter : null;
-    const areaReqLevel = area.requiredLevel || 0;
-
-    // 현재 배정된 고정인원 레벨 합
-    const levelSumOf = (pids) => pids.reduce((s,pid)=>{ const p=state.people.find(x=>x.id===pid); return s+(p?p.level:0); }, 0);
-    let currentLevelSum = levelSumOf(assignments[area.id]);
 
     const hasWorker = () => assignments[area.id].some(pid=>{ const p=state.people.find(x=>x.id===pid); return p?.category==='worker'; });
     const isWorkerUnit = (u) => u.members.every(m=>m.category==='worker');
@@ -1139,7 +1092,6 @@ function generateDraft(){
         const wu = remainingUnits[workerUnitIdx];
         assignments[area.id].push(...wu.members.map(m=>m.id));
         wu.members.forEach(m=>assignedPeople.add(m.id));
-        currentLevelSum += wu.members.reduce((s,m)=>s+m.level,0);
         filled += wu.members.length;
         remainingUnits.splice(workerUnitIdx,1);
       }
@@ -1157,24 +1109,11 @@ function generateDraft(){
       return 0;
     };
 
-    // 배정 때마다 남은 레벨 필요량 / 남은 인원수로 목표 레벨을 재계산해 가장 근접한 유닛 선택
-    // 팀 밸런스(초등·중고등 혼합) 1순위, 레벨 초과 방지 2순위, 레벨 근접도 3순위
     const sortByBalance = () => {
-      const remainingSlots = area.capacity - filled;
-      if(areaReqLevel > 0 && remainingSlots > 0){
-        const targetLevel = Math.max(0, areaReqLevel - currentLevelSum) / remainingSlots;
-        const wouldOvershoot = (u) => currentLevelSum + u.members.reduce((s,m)=>s+m.level,0) > areaReqLevel ? 1 : 0;
-        remainingUnits.sort((a,b)=>
-          (teamDiversityScore(a) - teamDiversityScore(b)) ||
-          (wouldOvershoot(a) - wouldOvershoot(b)) ||
-          (Math.abs(a.level - targetLevel) - Math.abs(b.level - targetLevel))
-        );
-      } else {
-        remainingUnits.sort((a,b)=>
-          (teamDiversityScore(a) - teamDiversityScore(b)) ||
-          (unitScore(a) - unitScore(b))
-        );
-      }
+      remainingUnits.sort((a,b)=>
+        (teamDiversityScore(a) - teamDiversityScore(b)) ||
+        (unitScore(a) - unitScore(b))
+      );
     };
 
     // 비사역자 기준 구역 내 성별 고정 (사역자는 무관)
@@ -1210,7 +1149,6 @@ function generateDraft(){
       if(genderOk && noRepeat && workerOk){
         assignments[area.id].push(...u.members.map(m=>m.id));
         u.members.forEach(m=>assignedPeople.add(m.id));
-        currentLevelSum += u.members.reduce((s,m)=>s+m.level,0);
         filled += size;
         remainingUnits.splice(i,1);
         i = 0;
@@ -1231,7 +1169,6 @@ function generateDraft(){
         if(genderOk && workerOk){
           assignments[area.id].push(...u.members.map(m=>m.id));
           u.members.forEach(m=>assignedPeople.add(m.id));
-          currentLevelSum += u.members.reduce((s,m)=>s+m.level,0);
           filled += size;
           remainingUnits.splice(i,1);
           notes.push(`"${area.name}" 배정 시 연속 배정 금지 조건을 완화했어요. 확인해주세요.`);
@@ -1240,9 +1177,6 @@ function generateDraft(){
     }
     if(filled < area.capacity){
       notes.push(`"${area.name}"에 인원이 부족해요 (${filled}/${area.capacity}명). 직접 채워주세요.`);
-    }
-    if(areaReqLevel > 0 && currentLevelSum < areaReqLevel){
-      notes.push(`"${area.name}" 배정 레벨 합계(${currentLevelSum})가 목표(${areaReqLevel})에 미치지 못해요. 직접 조정해주세요.`);
     }
   });
 
@@ -1280,7 +1214,7 @@ function bindEvents(){
     cancelPersonBtn.onclick = ()=>{
       pNameInput.value='';
       document.getElementById('p_team').value='';
-      document.getElementById('p_level').value='1';
+      document.getElementById('p_role').value='';
       document.getElementById('p_age').value='';
       document.getElementById('p_gender').value='m';
       document.getElementById('p_category').value='normal';
@@ -1294,11 +1228,11 @@ function bindEvents(){
       const gender = document.getElementById('p_gender').value;
       const category = document.getElementById('p_category').value;
       const team = document.getElementById('p_team').value.trim();
-      const level = parseInt(document.getElementById('p_level').value)||1;
+      const role = document.getElementById('p_role').value || null;
       const mentorId = category==='mentee' ? (document.getElementById('p_mentor').value || null) : null;
       const ageVal = document.getElementById('p_age').value;
       const age = ageVal ? parseInt(ageVal) : null;
-      const person = { name, gender, category, team, level, mentorId, age };
+      const person = { name, gender, category, team, role, mentorId, age };
       await addPersonDB(person);
       state.people.push(person);
       pNameInput.value=''; cancelPersonBtn.style.display='none';
@@ -1435,13 +1369,13 @@ function bindEvents(){
             p.team=inp.value.trim(); await updatePersonDB(p); pop.remove(); render();
           };
           setTimeout(()=>inp.focus(),50);
-        } else if(type==='level'){
-          pop.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:4px;">레벨</div>
+        } else if(type==='role'){
+          pop.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">역할</div>
             <div style="display:flex;gap:4px;">
-              ${[1,2,3,4,5].map(n=>`<button class="btn small ${p.level===n?'':'ghost'}" data-val="${n}">${n}</button>`).join('')}
+              ${['리더','멋쟁이','없음'].map(r=>`<button class="btn small ${p.role===r||(r==='없음'&&!p.role)?'':'ghost'}" data-val="${r}">${r}</button>`).join('')}
             </div>`;
           pop.querySelectorAll('button').forEach(b=>b.onclick=async()=>{
-            p.level=parseInt(b.dataset.val); await updatePersonDB(p); pop.remove(); render();
+            p.role = b.dataset.val==='없음' ? null : b.dataset.val; await updatePersonDB(p); pop.remove(); render();
           });
         } else if(type==='age'){
           pop.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:4px;">나이</div>
@@ -1517,8 +1451,8 @@ function bindEvents(){
         const gender = document.getElementById('bulk_gender').value;
         const category = document.getElementById('bulk_category').value;
         const team = document.getElementById('bulk_team').value.trim();
-        const levelRaw = document.getElementById('bulk_level').value;
-        const level = levelRaw ? parseInt(levelRaw) : null;
+        const roleRaw = document.getElementById('bulk_role').value;
+        const role = roleRaw || null;
         const ageRaw = document.getElementById('bulk_age').value;
         const age = ageRaw ? parseInt(ageRaw) : null;
         const targets = state.people.filter(p=>state._selectedPeople.has(p.id));
@@ -1526,7 +1460,7 @@ function bindEvents(){
           if(gender) p.gender=gender;
           if(category) p.category=category;
           if(team) p.team=team;
-          if(level) p.level=level;
+          if(role!==null) p.role = role==='없음' ? null : role;
           if(age) p.age=age;
           await updatePersonDB(p);
         }
@@ -1575,8 +1509,7 @@ function bindEvents(){
       const difficulty = 1;
       const genderFilter = document.getElementById('a_gender').value||'all';
       const isIndoor = document.getElementById('a_indoor').value !== 'false';
-      const requiredLevel = parseInt(document.getElementById('a_required_level').value)||0;
-      const area = { name, capacity, difficulty, genderFilter, fixedPeople:[], isIndoor, requiredLevel };
+      const area = { name, capacity, difficulty, genderFilter, fixedPeople:[], isIndoor };
       await addAreaDB(area);
       state.areas.push(area);
       render();
@@ -1611,7 +1544,7 @@ function bindEvents(){
         const dir = parseInt(b.dataset.stepDir);
         const area = state.areas.find(a=>String(a.id)===String(id));
         if(!area) return;
-        const min = field==='requiredLevel' ? 0 : 1;
+        const min = 1;
         const max = field==='difficulty' ? 5 : 99;
         const newVal = Math.min(max, Math.max(min, (area[field]||1) + dir));
         area[field] = newVal;
@@ -1652,7 +1585,7 @@ function bindEvents(){
         const field = inp.dataset.stepField;
         const area = state.areas.find(a=>String(a.id)===String(id));
         if(!area) return;
-        const min = field==='requiredLevel' ? 0 : 1;
+        const min = 1;
         const max = 999;
         const val = Math.min(max, Math.max(min, parseInt(inp.value)||0));
         if(area[field]===val) return;
@@ -2100,7 +2033,7 @@ async function handleRosterImage(file){
         let added = 0;
         for(const name of allNames){
           if(!state.people.find(p=>p.name===name)){
-            const person = {name, gender:'m', category:'normal', team:'', level:1, mentorId:null, age:null};
+            const person = {name, gender:'m', category:'normal', team:'', role:null, mentorId:null, age:null};
             await addPersonDB(person); state.people.push(person); added++;
           }
         }
@@ -2199,7 +2132,7 @@ async function handleRosterImage(file){
             name: p.name.trim(),
             gender: p.gender==='f'?'f':'m',
             category: ['worker','mentor','mentee','normal'].includes(p.category)?p.category:'normal',
-            team:'', level:1, mentorId:null, age:null
+            team:'', role:null, mentorId:null, age:null
           };
           await addPersonDB(person); state.people.push(person);
         }
