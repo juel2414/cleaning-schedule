@@ -773,22 +773,27 @@ function renderAreasTab(){
     </tr>`;
   }).join('');
   return `
-    <div class="card">
-      <h2>구역 추가</h2>
-      <p class="desc">구역별 필요 인원수와 성별을 설정하세요.</p>
-      <div class="row">
-        <label class="f">구역명<input type="text" id="a_name" placeholder="예: 화장실"></label>
-        <label class="f">필요 인원<input type="number" id="a_capacity" value="1" min="1" style="width:70px"></label>
-        <label class="f">구분<select id="a_indoor">
-          <option value="true">실내</option>
-          <option value="false">야외</option>
-        </select></label>
-        <label class="f">성별<select id="a_gender">
-          <option value="all">공통</option>
-          <option value="m">남자만</option>
-          <option value="f">여자만</option>
-        </select></label>
-        <button class="btn" id="addAreaBtn" style="align-self:flex-end">추가</button>
+    <div class="card" style="overflow:hidden;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+        <div style="flex:1;min-width:0;">
+          <h2>구역 추가</h2>
+          <p class="desc">구역별 필요 인원수와 성별을 설정하세요.</p>
+          <div class="row">
+            <label class="f">구역명<input type="text" id="a_name" placeholder="예: 화장실"></label>
+            <label class="f">필요 인원<input type="number" id="a_capacity" value="1" min="1" style="width:70px"></label>
+            <label class="f">구분<select id="a_indoor">
+              <option value="true">실내</option>
+              <option value="false">야외</option>
+            </select></label>
+            <label class="f">성별<select id="a_gender">
+              <option value="all">공통</option>
+              <option value="m">남자만</option>
+              <option value="f">여자만</option>
+            </select></label>
+            <button class="btn" id="addAreaBtn" style="align-self:flex-end">추가</button>
+          </div>
+        </div>
+        <img src="./images/누끼/S3_01036-Photoroom.png" alt="" class="nukki-deco" onclick="const el=this;const colors=[['#7dd3fc','#38bdf8','rgba(56,189,248,0.45)'],['#f9a8d4','#ec4899','rgba(236,72,153,0.4)'],['#6ee7b7','#10b981','rgba(16,185,129,0.4)'],['#fcd34d','#f59e0b','rgba(245,158,11,0.4)'],['#c4b5fd','#7c3aed','rgba(124,58,237,0.4)'],['#fb923c','#ea580c','rgba(234,88,12,0.4)']];const c=colors[Math.floor(Math.random()*colors.length)];el.style.setProperty('--gc1',c[0]);el.style.setProperty('--gc2',c[1]);el.style.setProperty('--gc3',c[2]);el.classList.add('glow');clearTimeout(el._glowT);el._glowT=setTimeout(()=>el.classList.remove('glow'),3000)">
       </div>
     </div>
     <div class="card" style="overflow-x:auto;">
