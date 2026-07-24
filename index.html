@@ -190,10 +190,10 @@
   .nukki-deco{height:160px;width:auto;display:block;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.15));margin-right:-8px;flex-shrink:0;align-self:flex-end;margin-bottom:-18px;cursor:pointer;transition:filter 0.25s,transform 0.15s;}
   .nukki-deco:hover{transform:scale(1.06);}
   .nukki-deco:active{transform:scale(0.95);}
-  .nukki-deco.glow{filter:drop-shadow(0 0 8px #a78bfa) drop-shadow(0 0 18px #7c3aed) drop-shadow(0 0 32px rgba(124,58,237,0.5));animation:nukki-pulse 1.5s ease-in-out infinite;}
+  .nukki-deco.glow{filter:drop-shadow(0 0 8px #7dd3fc) drop-shadow(0 0 18px #38bdf8) drop-shadow(0 0 32px rgba(56,189,248,0.4));animation:nukki-pulse 1.5s ease-in-out infinite;}
   @keyframes nukki-pulse{
-    0%,100%{filter:drop-shadow(0 0 8px #a78bfa) drop-shadow(0 0 18px #7c3aed) drop-shadow(0 0 32px rgba(124,58,237,0.5));}
-    50%{filter:drop-shadow(0 0 16px #c4b5fd) drop-shadow(0 0 32px #7c3aed) drop-shadow(0 0 48px rgba(124,58,237,0.7));}
+    0%,100%{filter:drop-shadow(0 0 8px #7dd3fc) drop-shadow(0 0 18px #38bdf8) drop-shadow(0 0 32px rgba(56,189,248,0.4));}
+    50%{filter:drop-shadow(0 0 14px #bae6fd) drop-shadow(0 0 28px #38bdf8) drop-shadow(0 0 44px rgba(56,189,248,0.55));}
   }
 
   /* ── FILTER TABS ── */
@@ -667,7 +667,7 @@ function renderPeopleTab(){
           <div id="uploadStatus" style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.7;"></div>
           <div id="importPreview"></div>
         </div>
-        <img src="./images/누끼/DSC02220-Photoroom.png" alt="" class="nukki-deco" onclick="this.classList.toggle('glow')">
+        <img src="./images/누끼/DSC02220-Photoroom.png" alt="" class="nukki-deco" onclick="const el=this;el.classList.add('glow');clearTimeout(el._glowT);el._glowT=setTimeout(()=>el.classList.remove('glow'),3000)">
       </div>
     </div>
     <div class="card" style="overflow:hidden;">
@@ -689,7 +689,7 @@ function renderPeopleTab(){
         <button class="btn" id="addPersonBtn" style="align-self:flex-end">추가</button>
       </div>
         </div>
-        <img src="./images/누끼/IMG_7110-Photoroom.png" alt="" class="nukki-deco" onclick="this.classList.toggle('glow')">
+        <img src="./images/누끼/IMG_7110-Photoroom.png" alt="" class="nukki-deco" onclick="const el=this;el.classList.add('glow');clearTimeout(el._glowT);el._glowT=setTimeout(()=>el.classList.remove('glow'),3000)">
       </div>
     </div>
     <div class="card" style="padding-bottom:${sel.size>0?'60px':'18px'}">
