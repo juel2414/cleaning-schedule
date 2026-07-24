@@ -762,11 +762,6 @@ function renderAreasTab(){
           </select>`;
         })()}
       </td>
-      <td>
-        <button class="btn ghost small ${a.requireWorker?'active':''}" data-require-worker="${a.id}" title="사역자 필수 배정" style="font-size:11px;padding:2px 8px;">
-          ${a.requireWorker?'사역자 필수':'사역자 선택'}
-        </button>
-      </td>
       <td><button class="btn ghost small danger" data-del-area="${a.id}">삭제</button></td>
     </tr>`;
   }).join('');
@@ -972,8 +967,10 @@ function currentMonthLabel(){
 }
 
 function buildUnits(){
-  const mentees = state.people.filter(p=>p.category==='mentee');
-  const mentors = state.people.filter(p=>p.category==='mentor');
+  // 사역자(worker)는 자동 배정에서 제외 — 점검자는 수동 배정
+  const students = state.people.filter(p=>p.category!=='worker');
+  const mentees = students.filter(p=>p.category==='mentee');
+  const mentors = students.filter(p=>p.category==='mentor');
   const used = new Set();
   const units = [];
   mentors.forEach(m=>{
@@ -987,7 +984,7 @@ function buildUnits(){
       teams: [...new Set(members.map(x=>x.team||''))]
     });
   });
-  state.people.forEach(p=>{
+  students.forEach(p=>{
     if(used.has(p.id)) return;
     units.push({ id: uid(), members:[p], gender:p.gender, teams:[p.team||''] });
   });
@@ -1041,23 +1038,6 @@ function generateDraft(){
     });
   });
 
-  // 사역자 필수 구역에 사역자 유닛 미리 예약 (일반 루프에서 소진되기 전에)
-  const requireWorkerAreas = areasSorted.filter(a=>a.requireWorker);
-  requireWorkerAreas.forEach(area=>{
-    // 고정인원/점검자 중 이미 사역자가 있으면 건너뜀
-    const alreadyHasWorker = (area.fixedPeople||[]).some(pid=>{
-      const p = state.people.find(x=>x.id===pid);
-      return p?.category==='worker';
-    }) || (area.inspectorId && state.people.find(x=>x.id===area.inspectorId)?.category==='worker');
-    if(alreadyHasWorker) return;
-    const workerUnitIdx = remainingUnits.findIndex(u=>u.members.some(m=>m.category==='worker') && u.members.length <= area.capacity);
-    if(workerUnitIdx !== -1){
-      const wu = remainingUnits[workerUnitIdx];
-      wu.members.forEach(m=>assignedPeople.add(m.id));
-      // 예약만 하고 실제 배정은 루프에서 처리 — units에 reservedFor 표시
-      wu._reservedFor = area.id;
-    }
-  });
 
   areasSorted.forEach(area=>{
     // 고정인원 배치
@@ -1079,23 +1059,6 @@ function generateDraft(){
     let filled = assignments[area.id].length;
     const areaGenderReq = area.genderFilter && area.genderFilter !== 'all' ? area.genderFilter : null;
 
-    const hasWorker = () => assignments[area.id].some(pid=>{ const p=state.people.find(x=>x.id===pid); return p?.category==='worker'; });
-    const isWorkerUnit = (u) => u.members.every(m=>m.category==='worker');
-    const hasWorkerMember = (u) => u.members.some(m=>m.category==='worker');
-
-    // 사역자 필수 구역: 예약된 사역자 유닛 또는 남은 사역자 유닛 먼저 배정
-    if(area.requireWorker && !hasWorker() && filled < area.capacity){
-      const reservedIdx = remainingUnits.findIndex(u=>u._reservedFor===area.id);
-      const workerUnitIdx = reservedIdx !== -1 ? reservedIdx
-        : remainingUnits.findIndex(u=>hasWorkerMember(u) && u.members.length <= area.capacity - filled);
-      if(workerUnitIdx !== -1){
-        const wu = remainingUnits[workerUnitIdx];
-        assignments[area.id].push(...wu.members.map(m=>m.id));
-        wu.members.forEach(m=>assignedPeople.add(m.id));
-        filled += wu.members.length;
-        remainingUnits.splice(workerUnitIdx,1);
-      }
-    }
     const teamsInArea = () => new Set(assignments[area.id].map(pid=>state.people.find(p=>p.id===pid)?.team||''));
 
     // 팀 밸런스 점수: 초등/중고등 팀이 구역에 없으면 해당 팀 유닛 최우선
@@ -1116,23 +1079,19 @@ function generateDraft(){
       );
     };
 
-    // 비사역자 기준 구역 내 성별 고정 (사역자는 무관)
-    const nonWorkerGender = () => {
+    // 구역 내 성별 통일 (성별 필터 없으면 먼저 배정된 성별 기준)
+    const areaCurrentGender = () => {
       for(const pid of assignments[area.id]){
         const p = state.people.find(x=>x.id===pid);
-        if(p && p.category!=='worker') return p.gender;
+        if(p) return p.gender;
       }
       return null;
     };
     const genderMixOk = (u) => {
-      // 구역에 성별 필터가 있으면 사역자 포함 모든 멤버에 적용
       if(areaGenderReq) return u.members.every(m=>m.gender===areaGenderReq);
-      // 성별 필터 없으면 비사역자끼리 성별 통일
-      const nonWorkers = u.members.filter(m=>m.category!=='worker');
-      if(nonWorkers.length===0) return true;
-      const areaGender = nonWorkerGender();
-      if(areaGender===null) return true;
-      return nonWorkers.every(m=>m.gender===areaGender);
+      const cur = areaCurrentGender();
+      if(cur===null) return true;
+      return u.members.every(m=>m.gender===cur);
     };
 
     let i=0;
@@ -1145,8 +1104,7 @@ function generateDraft(){
       if(u._reservedFor && u._reservedFor !== area.id){ i++; continue; }
       const genderOk = (areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq)) && genderMixOk(u);
       const noRepeat = u.members.every(m=> lastMap[m.id] !== area.id);
-      const workerOk = !isWorkerUnit(u) || !hasWorker();
-      if(genderOk && noRepeat && workerOk){
+      if(genderOk && noRepeat){
         assignments[area.id].push(...u.members.map(m=>m.id));
         u.members.forEach(m=>assignedPeople.add(m.id));
         filled += size;
@@ -1165,8 +1123,7 @@ function generateDraft(){
         if(filled + size > area.capacity){ i++; continue; }
         if(u._reservedFor && u._reservedFor !== area.id){ i++; continue; }
         const genderOk = (areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq)) && genderMixOk(u);
-        const workerOk = !isWorkerUnit(u) || !hasWorker();
-        if(genderOk && workerOk){
+        if(genderOk){
           assignments[area.id].push(...u.members.map(m=>m.id));
           u.members.forEach(m=>assignedPeople.add(m.id));
           filled += size;
