@@ -515,7 +515,7 @@ function renderPersonRow(p, isMentee){
       <span style="font-size:12px;color:${p.team?'var(--ink)':'var(--muted)'};">${p.team||'팀없음'}</span><span class="edit-hint">✎</span>
     </span>
     <span class="editable-cell" data-toggle="role" data-id="${p.id}" title="클릭해서 수정">
-      ${p.role==='리더' ? `<span style="font-size:11px;font-weight:800;color:#fff;background:#7c3aed;border-radius:8px;padding:2px 8px;">리더</span>` : p.role==='멋쟁이' ? `<span style="font-size:11px;font-weight:800;color:#fff;background:#db2777;border-radius:8px;padding:2px 8px;">멋쟁이</span>` : `<span style="font-size:11px;color:var(--muted);">-</span>`}<span class="edit-hint">✎</span>
+      ${p.role==='리더' ? `<span style="font-size:11px;font-weight:800;color:#fff;background:#7c3aed;border-radius:8px;padding:2px 8px;">리더</span>` : p.role==='멋쟁이' ? `<span style="font-size:11px;font-weight:800;color:#fff;background:#db2777;border-radius:8px;padding:2px 8px;">멋쟁이</span>` : p.role==='점검자' ? `<span style="font-size:11px;font-weight:800;color:#fff;background:#0369a1;border-radius:8px;padding:2px 8px;">점검자</span>` : `<span style="font-size:11px;color:var(--muted);">-</span>`}<span class="edit-hint">✎</span>
     </span>
     <span class="editable-cell" data-toggle="age" data-id="${p.id}" title="클릭해서 수정">
       <span style="font-size:12px;color:${p.age?'var(--ink)':'var(--muted)'};">${p.age?p.age+'세':'-'}</span><span class="edit-hint">✎</span>
@@ -642,7 +642,7 @@ function renderPeopleTab(){
       <select id="bulk_gender"><option value="">성별 변경...</option><option value="m">남</option><option value="f">여</option></select>
       <select id="bulk_category"><option value="">카테고리 변경...</option><option value="normal">일반</option><option value="mentor">멘토</option><option value="mentee">멘티</option><option value="worker">사역자</option></select>
       <input type="text" id="bulk_team" placeholder="팀 일괄 변경..." style="width:120px;">
-      <select id="bulk_role" style="width:90px;font-size:13px;"><option value="">역할 변경...</option><option value="리더">리더</option><option value="멋쟁이">멋쟁이</option><option value="없음">없음</option></select>
+      <select id="bulk_role" style="width:90px;font-size:13px;"><option value="">역할 변경...</option><option value="리더">리더</option><option value="멋쟁이">멋쟁이</option><option value="점검자">점검자</option><option value="없음">없음</option></select>
       <input type="number" id="bulk_age" placeholder="나이" min="1" max="120" style="width:70px;">
       <button class="btn small" id="bulkApplyBtn" style="background:#fff;color:var(--moss-dark);border-color:#fff;">일괄 적용</button>
       <button class="btn small" id="bulkDeleteBtn" style="background:#b5453a;border-color:#b5453a;color:#fff;">삭제</button>
@@ -675,7 +675,7 @@ function renderPeopleTab(){
           <option value="mentee">멘티</option><option value="worker">사역자</option>
         </select></label>
         <label class="f">팀<input type="text" id="p_team" placeholder="예: 1팀" style="width:80px"></label>
-        <label class="f">역할<select id="p_role" style="width:80px"><option value="">없음</option><option value="리더">리더</option><option value="멋쟁이">멋쟁이</option></select></label>
+        <label class="f">역할<select id="p_role" style="width:80px"><option value="">없음</option><option value="리더">리더</option><option value="멋쟁이">멋쟁이</option><option value="점검자">점검자</option></select></label>
         <label class="f">나이<input type="number" id="p_age" placeholder="나이" min="1" max="120" style="width:60px"></label>
         <label class="f" id="mentorPickWrap" style="display:none">담당 멘토<select id="p_mentor"><option value="">선택</option>${mentors.map(m=>`<option value="${m.id}">${m.name}</option>`).join('')}</select></label>
         <button class="btn ghost small" id="cancelPersonBtn" style="align-self:flex-end;display:none;">취소</button>
@@ -755,10 +755,10 @@ function renderAreasTab(){
       </td>
       <td style="min-width:100px;">
         ${(()=>{
-          const workers = state.people.filter(p=>p.category==='worker');
+          const inspectors = state.people.filter(p=>p.role==='점검자');
           return `<select class="area-inline" data-area-field="inspectorId" data-area-id="${a.id}" style="font-size:12px;max-width:100px;">
             <option value="">-</option>
-            ${workers.map(w=>`<option value="${w.id}" ${a.inspectorId===w.id?'selected':''}>${w.name}</option>`).join('')}
+            ${inspectors.map(w=>`<option value="${w.id}" ${a.inspectorId===w.id?'selected':''}>${w.name}</option>`).join('')}
           </select>`;
         })()}
       </td>
@@ -967,8 +967,8 @@ function currentMonthLabel(){
 }
 
 function buildUnits(){
-  // 사역자(worker)는 자동 배정에서 제외 — 점검자는 수동 배정
-  const students = state.people.filter(p=>p.category!=='worker');
+  // role=점검자는 자동 배정 제외 — 수동 배정
+  const students = state.people.filter(p=>p.role!=='점검자');
   const mentees = students.filter(p=>p.category==='mentee');
   const mentors = students.filter(p=>p.category==='mentor');
   const used = new Set();
@@ -1072,9 +1072,31 @@ function generateDraft(){
       return 0;
     };
 
+    const globalAvgAge = (() => {
+      const ages = state.people.filter(p=>p.age&&p.role!=='점검자').map(p=>p.age);
+      return ages.length ? ages.reduce((s,a)=>s+a,0)/ages.length : 0;
+    })();
     const sortByBalance = () => {
+      const areaAssigned = assignments[area.id];
+      const hasKeyRole = areaAssigned.some(pid=>{
+        const p = state.people.find(x=>x.id===pid);
+        return p?.role==='리더' || p?.role==='멋쟁이';
+      });
+      const areaAges = areaAssigned.map(pid=>state.people.find(x=>x.id===pid)?.age).filter(Boolean);
+      const areaAvgAge = areaAges.length ? areaAges.reduce((s,a)=>s+a,0)/areaAges.length : globalAvgAge;
+      const roleScore = (u) => (!hasKeyRole && u.members.some(m=>m.role==='리더'||m.role==='멋쟁이')) ? -2 : 0;
+      const ageScore = (u) => {
+        if(!globalAvgAge) return 0;
+        const unitAges = u.members.map(m=>m.age).filter(Boolean);
+        if(!unitAges.length) return 0;
+        const allAges = [...areaAges, ...unitAges];
+        const newAreaAvg = allAges.reduce((s,a)=>s+a,0)/allAges.length;
+        return Math.abs(newAreaAvg - globalAvgAge) < Math.abs(areaAvgAge - globalAvgAge) ? -1 : 0;
+      };
       remainingUnits.sort((a,b)=>
         (teamDiversityScore(a) - teamDiversityScore(b)) ||
+        (roleScore(a) - roleScore(b)) ||
+        (ageScore(a) - ageScore(b)) ||
         (unitScore(a) - unitScore(b))
       );
     };
@@ -1328,8 +1350,8 @@ function bindEvents(){
           setTimeout(()=>inp.focus(),50);
         } else if(type==='role'){
           pop.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">역할</div>
-            <div style="display:flex;gap:4px;">
-              ${['리더','멋쟁이','없음'].map(r=>`<button class="btn small ${p.role===r||(r==='없음'&&!p.role)?'':'ghost'}" data-val="${r}">${r}</button>`).join('')}
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+              ${['리더','멋쟁이','점검자','없음'].map(r=>`<button class="btn small ${p.role===r||(r==='없음'&&!p.role)?'':'ghost'}" data-val="${r}">${r}</button>`).join('')}
             </div>`;
           pop.querySelectorAll('button').forEach(b=>b.onclick=async()=>{
             p.role = b.dataset.val==='없음' ? null : b.dataset.val; await updatePersonDB(p); pop.remove(); render();
