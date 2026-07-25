@@ -1154,7 +1154,12 @@ function generateDraft(){
       const unitHasPhilip = u.members.some(m=>m.id===PHILIP_ID);
       const unitHasJinwoo = u.members.some(m=>m.id===JINWOO_ID);
       const noConflict = !((areaHasPhilip && unitHasJinwoo) || (areaHasJinwoo && unitHasPhilip));
-      if(genderOk && noRepeat && noConflict){
+      // 구역당 멋쟁이 1명 제한 + 멋쟁이는 리더 있는 구역에만
+      const areaHasLeader = assignments[area.id].some(pid=>state.people.find(x=>x.id===pid)?.role==='리더');
+      const areaHasFashion = assignments[area.id].some(pid=>state.people.find(x=>x.id===pid)?.role==='멋쟁이');
+      const unitHasFashion = u.members.some(m=>m.role==='멋쟁이');
+      const fashionOk = !unitHasFashion || (!areaHasFashion && areaHasLeader);
+      if(genderOk && noRepeat && noConflict && fashionOk){
         assignments[area.id].push(...u.members.map(m=>m.id));
         u.members.forEach(m=>assignedPeople.add(m.id));
         filled += size;
@@ -1176,7 +1181,10 @@ function generateDraft(){
         const areaHasPhilip2 = assignments[area.id].includes('5d3cb209-5f00-432b-9821-c8f8187199c9');
         const areaHasJinwoo2 = assignments[area.id].includes('7854506c-fa23-4d18-97a8-7b45613ec9b6');
         const noConflict2 = !((areaHasPhilip2 && u.members.some(m=>m.id==='7854506c-fa23-4d18-97a8-7b45613ec9b6')) || (areaHasJinwoo2 && u.members.some(m=>m.id==='5d3cb209-5f00-432b-9821-c8f8187199c9')));
-        if(genderOk && noConflict2){
+        const areaHasLeader2 = assignments[area.id].some(pid=>state.people.find(x=>x.id===pid)?.role==='리더');
+        const areaHasFashion2 = assignments[area.id].some(pid=>state.people.find(x=>x.id===pid)?.role==='멋쟁이');
+        const fashionOk2 = !u.members.some(m=>m.role==='멋쟁이') || (!areaHasFashion2 && areaHasLeader2);
+        if(genderOk && noConflict2 && fashionOk2){
           assignments[area.id].push(...u.members.map(m=>m.id));
           u.members.forEach(m=>assignedPeople.add(m.id));
           filled += size;
