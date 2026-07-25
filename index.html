@@ -1171,41 +1171,8 @@ function generateDraft(){
     }
   });
 
-  // 폴백: 유닛 크기 문제로 미배정된 인원을 개별로 쪼개서 빈 자리에 배정
-  if(remainingUnits.length > 0){
-    const remainingPeople = [];
-    remainingUnits.forEach(u => u.members.forEach(m => remainingPeople.push(m)));
-    remainingUnits = [];
-
-    state.areas.forEach(area => {
-      const areaGenderReq = area.genderFilter && area.genderFilter !== 'all' ? area.genderFilter : null;
-      let filled = assignments[area.id].length;
-      if(filled >= area.capacity) return;
-
-      const areaCurrentGender = () => {
-        for(const pid of assignments[area.id]){
-          const p = state.people.find(x=>x.id===pid);
-          if(p) return p.gender;
-        }
-        return null;
-      };
-
-      let i = 0;
-      while(filled < area.capacity && i < remainingPeople.length){
-        const p = remainingPeople[i];
-        const genderOk = areaGenderReq ? p.gender === areaGenderReq : (areaCurrentGender() === null || p.gender === areaCurrentGender());
-        if(genderOk){
-          assignments[area.id].push(p.id);
-          assignedPeople.add(p.id);
-          remainingPeople.splice(i, 1);
-          filled++;
-        } else { i++; }
-      }
-    });
-
-    if(remainingPeople.length > 0){
-      notes.push(`미배정 인원이 ${remainingPeople.length}명 있어요. 구역 정원을 확인하거나 직접 배정해주세요.`);
-    }
+  if(remainingUnits.length>0){
+    notes.push(`미배정 인원이 있어요. 구역별 정원을 확인하거나 직접 배정해주세요.`);
   }
 
   return {
