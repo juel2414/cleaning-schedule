@@ -1070,6 +1070,7 @@ function generateDraft(){
     }
 
     let filled = assignments[area.id].length;
+    const target = Math.max(1, area.capacity - 1); // 점검자 자리 1개 확보
     const areaGenderReq = area.genderFilter && area.genderFilter !== 'all' ? area.genderFilter : null;
 
     const teamsInArea = () => new Set(assignments[area.id].map(pid=>state.people.find(p=>p.id===pid)?.team||''));
@@ -1137,11 +1138,11 @@ function generateDraft(){
     };
 
     let i=0;
-    while(filled < area.capacity && i < remainingUnits.length){
+    while(filled < target && i < remainingUnits.length){
       sortByBalance();
       const u = remainingUnits[i];
       const size = u.members.length;
-      if(filled + size > area.capacity){ i++; continue; }
+      if(filled + size > target){ i++; continue; }
       // 다른 구역에 예약된 사역자 유닛은 건너뜀
       if(u._reservedFor && u._reservedFor !== area.id){ i++; continue; }
       const genderOk = (areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq)) && genderMixOk(u);
@@ -1169,13 +1170,13 @@ function generateDraft(){
         i++;
       }
     }
-    if(filled < area.capacity){
+    if(filled < target){
       // 반복 배정 금지 완화
       i=0;
-      while(filled < area.capacity && i < remainingUnits.length){
+      while(filled < target && i < remainingUnits.length){
         const u = remainingUnits[i];
         const size = u.members.length;
-        if(filled + size > area.capacity){ i++; continue; }
+        if(filled + size > target){ i++; continue; }
         if(u._reservedFor && u._reservedFor !== area.id){ i++; continue; }
         const genderOk = (areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq)) && genderMixOk(u);
         const areaHasPhilip2 = assignments[area.id].includes('5d3cb209-5f00-432b-9821-c8f8187199c9');
@@ -1193,7 +1194,7 @@ function generateDraft(){
         } else { i++; }
       }
     }
-    if(filled < area.capacity){
+    if(filled < target){
       notes.push(`"${area.name}"에 인원이 부족해요 (${filled}/${area.capacity}명). 직접 채워주세요.`);
     }
   });
