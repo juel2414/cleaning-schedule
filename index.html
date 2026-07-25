@@ -1097,7 +1097,13 @@ function generateDraft(){
       });
       const areaAges = areaAssigned.map(pid=>state.people.find(x=>x.id===pid)?.age).filter(Boolean);
       const areaAvgAge = areaAges.length ? areaAges.reduce((s,a)=>s+a,0)/areaAges.length : globalAvgAge;
-      const roleScore = (u) => (!hasKeyRole && u.members.some(m=>m.role==='리더'||m.role==='멋쟁이')) ? -2 : 0;
+      const areasWithKeyRole = Object.values(assignments).filter(pids=>pids.some(pid=>{const p=state.people.find(x=>x.id===pid);return p?.role==='리더'||p?.role==='멋쟁이';})).length;
+      const roleScore = (u) => {
+        const unitHasKey = u.members.some(m=>m.role==='리더'||m.role==='멋쟁이');
+        if(!unitHasKey) return 0;
+        if(!hasKeyRole) return -2; // 이 구역에 아직 없으면 최우선
+        return areasWithKeyRole < state.areas.length * 0.6 ? 1 : 0; // 아직 많은 구역이 비어있으면 여기 추가 억제
+      };
       const ageScore = (u) => {
         if(!globalAvgAge) return 0;
         const unitAges = u.members.map(m=>m.age).filter(Boolean);
@@ -1140,7 +1146,15 @@ function generateDraft(){
       if(u._reservedFor && u._reservedFor !== area.id){ i++; continue; }
       const genderOk = (areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq)) && genderMixOk(u);
       const noRepeat = u.members.every(m=> lastMap[m.id] !== area.id);
-      if(genderOk && noRepeat){
+      // 필립·진우 동일 구역 배정 금지
+      const PHILIP_ID = '5d3cb209-5f00-432b-9821-c8f8187199c9';
+      const JINWOO_ID = '7854506c-fa23-4d18-97a8-7b45613ec9b6';
+      const areaHasPhilip = assignments[area.id].includes(PHILIP_ID);
+      const areaHasJinwoo = assignments[area.id].includes(JINWOO_ID);
+      const unitHasPhilip = u.members.some(m=>m.id===PHILIP_ID);
+      const unitHasJinwoo = u.members.some(m=>m.id===JINWOO_ID);
+      const noConflict = !((areaHasPhilip && unitHasJinwoo) || (areaHasJinwoo && unitHasPhilip));
+      if(genderOk && noRepeat && noConflict){
         assignments[area.id].push(...u.members.map(m=>m.id));
         u.members.forEach(m=>assignedPeople.add(m.id));
         filled += size;
@@ -1159,7 +1173,10 @@ function generateDraft(){
         if(filled + size > area.capacity){ i++; continue; }
         if(u._reservedFor && u._reservedFor !== area.id){ i++; continue; }
         const genderOk = (areaGenderReq===null || u.members.every(m=>m.gender===areaGenderReq)) && genderMixOk(u);
-        if(genderOk){
+        const areaHasPhilip2 = assignments[area.id].includes('5d3cb209-5f00-432b-9821-c8f8187199c9');
+        const areaHasJinwoo2 = assignments[area.id].includes('7854506c-fa23-4d18-97a8-7b45613ec9b6');
+        const noConflict2 = !((areaHasPhilip2 && u.members.some(m=>m.id==='7854506c-fa23-4d18-97a8-7b45613ec9b6')) || (areaHasJinwoo2 && u.members.some(m=>m.id==='5d3cb209-5f00-432b-9821-c8f8187199c9')));
+        if(genderOk && noConflict2){
           assignments[area.id].push(...u.members.map(m=>m.id));
           u.members.forEach(m=>assignedPeople.add(m.id));
           filled += size;
