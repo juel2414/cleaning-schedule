@@ -324,7 +324,7 @@ function dbPersonToState(p){
   return { id:p.id, name:p.name, gender:p.gender, category:p.category, team:p.team||'', role:p.role||null, mentorId:p.mentor_id, age:p.age||null };
 }
 function dbAreaToState(a){
-  return { id:a.id, name:a.name, capacity:a.capacity, difficulty:a.difficulty, genderFilter:a.gender_filter||'all', fixedPeople:a.fixed_people||[], isIndoor:a.is_indoor!==false, inspectorId:a.inspector_id||null, requireWorker:a.require_worker||false };
+  return { id:a.id, name:a.name, capacity:a.capacity, difficulty:a.difficulty, genderFilter:a.gender_filter||'all', fixedPeople:a.fixed_people||[], isIndoor:a.is_indoor!==false, inspectorJoins:a.inspector_joins||false, requireWorker:a.require_worker||false };
 }
 function dbScheduleToState(s){
   return { id:s.id, month:s.month, label:s.label||null, assignments:s.assignments||{}, status:s.status, notes:s.notes||[], createdAt: new Date(s.created_at).getTime() };
@@ -368,7 +368,7 @@ async function addAreaDB(a){
   if(!error && data) a.id = data.id;
 }
 async function deleteAreaDB(id){ await sb.from('areas').delete().eq('id', id); }
-async function updateAreaDB(a){ await sb.from('areas').update({name:a.name,capacity:a.capacity,difficulty:a.difficulty,gender_filter:a.genderFilter,fixed_people:a.fixedPeople,is_indoor:a.isIndoor!==false,inspector_id:a.inspectorId||null,require_worker:a.requireWorker||false}).eq('id',a.id); }
+async function updateAreaDB(a){ await sb.from('areas').update({name:a.name,capacity:a.capacity,difficulty:a.difficulty,gender_filter:a.genderFilter,fixed_people:a.fixedPeople,is_indoor:a.isIndoor!==false,inspector_joins:a.inspectorJoins||false,require_worker:a.requireWorker||false}).eq('id',a.id); }
 
 async function createDraftDB(draft){
   const {data, error} = await sb.from('schedules').insert({
@@ -760,14 +760,10 @@ function renderAreasTab(){
           ${fixSelect}
         </div>
       </td>
-      <td style="min-width:100px;">
-        ${(()=>{
-          const inspectors = state.people.filter(p=>p.role==='점검자');
-          return `<select class="area-inline" data-area-field="inspectorId" data-area-id="${a.id}" style="font-size:12px;max-width:100px;">
-            <option value="">-</option>
-            ${inspectors.map(w=>`<option value="${w.id}" ${a.inspectorId===w.id?'selected':''}>${w.name}</option>`).join('')}
-          </select>`;
-        })()}
+      <td style="min-width:80px;text-align:center;">
+        <button data-toggle-inspector="${a.id}" style="font-size:12px;font-weight:700;padding:3px 12px;border-radius:20px;border:1.5px solid ${a.inspectorJoins?'#0369a1':'var(--line)'};background:${a.inspectorJoins?'#e0f2fe':'transparent'};color:${a.inspectorJoins?'#0369a1':'var(--muted)'};cursor:pointer;">
+          ${a.inspectorJoins?'유':'무'}
+        </button>
       </td>
       <td><button class="btn ghost small danger" data-del-area="${a.id}">삭제</button></td>
     </tr>`;
@@ -895,7 +891,7 @@ function renderDraftBoard(entry, editable){
           <div>
             <span class="zone-name">${area.name}</span>
             <span class="zone-meta"> · 필요 ${area.capacity}명</span>
-            ${area.inspectorId ? `<span style="font-size:11px;color:var(--navy);background:var(--blue-light);border-radius:10px;padding:1px 7px;margin-left:4px;">🔍 ${personById(area.inspectorId)?.name||''}</span>` : ''}
+            ${area.inspectorJoins ? `<span style="font-size:11px;color:#0369a1;background:#e0f2fe;border-radius:10px;padding:1px 7px;margin-left:4px;">점검자 동행</span>` : ''}
           </div>
           ${warn?`<span class="warn-badge">인원 ${assigned.length}/${area.capacity}</span>`:''}
         </div>
@@ -1034,8 +1030,6 @@ function generateDraft(){
   const assignments = {};
   state.areas.forEach(a=> assignments[a.id]=[]);
 
-  // 점검자 배정 준비: 점검자별로 담당 구역 목록 수집
-  const placedInspectors = new Set();
   // 한 사람은 한 달에 한 구역에만 배정 — 이미 배정된 인원 추적
   const assignedPeople = new Set();
 
@@ -1059,18 +1053,9 @@ function generateDraft(){
       if(!assignments[area.id].includes(pid)) assignments[area.id].push(pid);
     });
 
-    // 점검자 배치: 아직 어느 구역에도 배치되지 않은 경우 이 구역에 포함
-    if(area.inspectorId && !placedInspectors.has(area.inspectorId) && !assignedPeople.has(area.inspectorId)){
-      if(!assignments[area.id].includes(area.inspectorId)){
-        assignments[area.id].push(area.inspectorId);
-      }
-      assignedPeople.add(area.inspectorId);
-      placedInspectors.add(area.inspectorId);
-      remainingUnits = remainingUnits.filter(u=>!u.members.some(m=>m.id===area.inspectorId));
-    }
 
     let filled = assignments[area.id].length;
-    const target = Math.max(1, area.capacity - 1); // 점검자 자리 1개 확보
+    const target = area.inspectorJoins ? Math.max(1, area.capacity - 1) : area.capacity;
     const areaGenderReq = area.genderFilter && area.genderFilter !== 'all' ? area.genderFilter : null;
 
     const teamsInArea = () => new Set(assignments[area.id].map(pid=>state.people.find(p=>p.id===pid)?.team||''));
@@ -1656,6 +1641,18 @@ function bindEvents(){
       };
     });
 
+    // 점검자 동행 토글
+    document.querySelectorAll('[data-toggle-inspector]').forEach(btn=>{
+      btn.onclick = async ()=>{
+        const area = state.areas.find(a=>String(a.id)===String(btn.dataset.toggleInspector));
+        if(!area) return;
+        area.inspectorJoins = !area.inspectorJoins;
+        await updateAreaDB(area);
+        toast(`${area.name} 점검자 동행 ${area.inspectorJoins?'유':'무'}로 변경했어요.`);
+        render();
+      };
+    });
+
     // 구역 인라인 편집 (성별 / 고정인원)
     document.querySelectorAll('.area-inline').forEach(input=>{
       input.onchange = async ()=>{
@@ -1679,13 +1676,7 @@ function bindEvents(){
           toast(`${area.name} 성별을 변경했어요.`);
           return;
         }
-        if(field==='inspectorId'){
-          area.inspectorId = input.value || null;
-          await updateAreaDB(area);
-          const name = input.value ? state.people.find(p=>p.id===input.value)?.name : '없음';
-          toast(`${area.name} 점검자를 ${name}으로 설정했어요.`);
-          return;
-        }
+        // (inspectorId 필드 제거됨)
         const val = parseInt(input.value);
         if(isNaN(val)||val<1) return;
         area[field] = val;
