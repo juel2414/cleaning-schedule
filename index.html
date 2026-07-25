@@ -1727,12 +1727,11 @@ function bindEvents(){
   if(genBtn){
     genBtn.onclick = async ()=>{
       const draft = generateDraft();
-      // 현재 활성 프로젝트에 덮어쓰기 vs 새로 생성
-      if(state.draft){
-        await deleteDraftDB(state.draft.id);
-        state.projects = state.projects.filter(p=>p.id!==state.draft.id);
-      }
-      draft.label = state.draft?.label || null;
+      // 기존 draft 전부 삭제 후 새로 생성
+      const oldLabel = state.draft?.label || null;
+      await Promise.all(state.projects.map(p=>deleteDraftDB(p.id)));
+      state.projects = [];
+      draft.label = oldLabel;
       await createDraftDB(draft);
       state.projects.push(draft);
       state.draft = draft;
