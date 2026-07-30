@@ -187,14 +187,6 @@
     padding:2px 10px;border-radius:20px;margin-top:-8px;white-space:nowrap;
   }
   .nukki-select-btn.all-selected .sel-label{background:var(--red);}
-  .nukki-deco{height:160px;width:auto;display:block;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.15));margin-right:-8px;flex-shrink:0;align-self:flex-end;margin-bottom:-18px;cursor:pointer;transition:filter 0.25s,transform 0.15s;}
-  .nukki-deco:hover{transform:scale(1.06);}
-  .nukki-deco:active{transform:scale(0.95);}
-  .nukki-deco.glow{filter:drop-shadow(0 0 8px var(--gc1,#7dd3fc)) drop-shadow(0 0 18px var(--gc2,#38bdf8)) drop-shadow(0 0 32px var(--gc3,rgba(56,189,248,0.4)));animation:nukki-pulse 1.5s ease-in-out infinite;}
-  @keyframes nukki-pulse{
-    0%,100%{filter:drop-shadow(0 0 8px var(--gc1,#7dd3fc)) drop-shadow(0 0 18px var(--gc2,#38bdf8)) drop-shadow(0 0 32px var(--gc3,rgba(56,189,248,0.4)));}
-    50%{filter:drop-shadow(0 0 14px var(--gc1,#7dd3fc)) drop-shadow(0 0 28px var(--gc2,#38bdf8)) drop-shadow(0 0 44px var(--gc3,rgba(56,189,248,0.4)));}
-  }
 
   /* ── FILTER TABS ── */
   .filter-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
@@ -667,7 +659,9 @@ function renderPeopleTab(){
           <div id="uploadStatus" style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.7;"></div>
           <div id="importPreview"></div>
         </div>
-        <img src="./images/누끼/DSC02220-Photoroom.png" alt="" class="nukki-deco" onclick="const el=this;const colors=[['#7dd3fc','#38bdf8','rgba(56,189,248,0.45)'],['#f9a8d4','#ec4899','rgba(236,72,153,0.4)'],['#6ee7b7','#10b981','rgba(16,185,129,0.4)'],['#fcd34d','#f59e0b','rgba(245,158,11,0.4)'],['#c4b5fd','#7c3aed','rgba(124,58,237,0.4)'],['#fb923c','#ea580c','rgba(234,88,12,0.4)']];const c=colors[Math.floor(Math.random()*colors.length)];el.style.setProperty('--gc1',c[0]);el.style.setProperty('--gc2',c[1]);el.style.setProperty('--gc3',c[2]);el.classList.add('glow');clearTimeout(el._glowT);el._glowT=setTimeout(()=>el.classList.remove('glow'),3000)">
+        <div style="flex-shrink:0;align-self:center;width:80px;height:80px;background:var(--blue-light);border-radius:20px;display:flex;align-items:center;justify-content:center;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3b5bdb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        </div>
       </div>
     </div>
     <div class="card" style="overflow:hidden;">
@@ -689,7 +683,9 @@ function renderPeopleTab(){
         <button class="btn" id="addPersonBtn" style="align-self:flex-end">추가</button>
       </div>
         </div>
-        <img src="./images/누끼/IMG_7110-Photoroom.png" alt="" class="nukki-deco" onclick="const el=this;const colors=[['#7dd3fc','#38bdf8','rgba(56,189,248,0.45)'],['#f9a8d4','#ec4899','rgba(236,72,153,0.4)'],['#6ee7b7','#10b981','rgba(16,185,129,0.4)'],['#fcd34d','#f59e0b','rgba(245,158,11,0.4)'],['#c4b5fd','#7c3aed','rgba(124,58,237,0.4)'],['#fb923c','#ea580c','rgba(234,88,12,0.4)']];const c=colors[Math.floor(Math.random()*colors.length)];el.style.setProperty('--gc1',c[0]);el.style.setProperty('--gc2',c[1]);el.style.setProperty('--gc3',c[2]);el.classList.add('glow');clearTimeout(el._glowT);el._glowT=setTimeout(()=>el.classList.remove('glow'),3000)">
+        <div style="flex-shrink:0;align-self:center;width:80px;height:80px;background:#fce7f3;border-radius:20px;display:flex;align-items:center;justify-content:center;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#be185d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        </div>
       </div>
     </div>
     <div class="card" style="padding-bottom:${sel.size>0?'60px':'18px'}">
@@ -699,14 +695,14 @@ function renderPeopleTab(){
         <h2 style="margin:0">등록된 인원 (${state.people.length}명)</h2>
         ${state.people.length>0?`
         <div style="display:flex;align-items:flex-end;gap:6px;">
-          <div class="nukki-select-btn${allChecked?' all-selected':''}" id="nukkiFab">
-            <img src="./images/누끼/주님한분2-Photoroom.png" alt="전체 선택">
-            <span class="sel-label">${allChecked?'선택 해제':'전체 선택'}</span>
-          </div>
+          <button class="btn ghost small${allChecked?' all-selected':''}" id="nukkiFab" style="display:flex;align-items:center;gap:6px;font-weight:700;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            ${allChecked?'선택 해제':'전체 선택'}
+          </button>
         </div>`:''}
       </div>
       ${state.people.length===0?`<div class="empty" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 0;">
-        <img src="./images/누끼/S3_01026-Photoroom.png" alt="" class="nukki-deco">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#c7d2fe" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
         <span>아직 등록된 인원이 없어요.</span>
       </div>`:`
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 10px;display:grid;grid-template-columns:28px 1fr auto auto auto auto auto auto auto;gap:8px;">
@@ -789,7 +785,9 @@ function renderAreasTab(){
             <button class="btn" id="addAreaBtn" style="align-self:flex-end">추가</button>
           </div>
         </div>
-        <img src="./images/누끼/S3_01036-Photoroom.png" alt="" class="nukki-deco" onclick="const el=this;const colors=[['#7dd3fc','#38bdf8','rgba(56,189,248,0.45)'],['#f9a8d4','#ec4899','rgba(236,72,153,0.4)'],['#6ee7b7','#10b981','rgba(16,185,129,0.4)'],['#fcd34d','#f59e0b','rgba(245,158,11,0.4)'],['#c4b5fd','#7c3aed','rgba(124,58,237,0.4)'],['#fb923c','#ea580c','rgba(234,88,12,0.4)']];const c=colors[Math.floor(Math.random()*colors.length)];el.style.setProperty('--gc1',c[0]);el.style.setProperty('--gc2',c[1]);el.style.setProperty('--gc3',c[2]);el.classList.add('glow');clearTimeout(el._glowT);el._glowT=setTimeout(()=>el.classList.remove('glow'),3000)">
+        <div style="flex-shrink:0;align-self:center;width:80px;height:80px;background:#dcfce7;border-radius:20px;display:flex;align-items:center;justify-content:center;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
       </div>
     </div>
     <div class="card" style="overflow-x:auto;">
@@ -1831,15 +1829,6 @@ async function exportBoardImage(){
 
   const titleText = document.getElementById('exportTitle')?.value || `${entry.month} 본부 건물 청소당번표`;
 
-  // 누끼 이미지 — base64로 변환해서 html2canvas taint 우회
-  const nukkiFiles = ['주님한분5-Photoroom.png','DSC02220-Photoroom.png','IMG_7110-Photoroom.png','S3_01057-Photoroom.png'];
-  const nukkiSrc = './images/누끼/' + nukkiFiles[Math.floor(Math.random()*nukkiFiles.length)];
-  const nukkiB64 = await fetch(nukkiSrc).then(r=>r.blob()).then(blob=>new Promise(res=>{
-    const reader = new FileReader();
-    reader.onload = ()=>res(reader.result);
-    reader.onerror = ()=>res('');
-    reader.readAsDataURL(blob);
-  })).catch(()=>'');
 
   // 한 사람 이름 HTML (팀별 색상)
   const nameHtml = (p) => {
@@ -1890,9 +1879,7 @@ async function exportBoardImage(){
       <tbody>${makeRows(list)}</tbody>
     </table>`;
 
-  const nukkiTag = nukkiB64
-    ? `<img src="${nukkiB64}" style="height:180px;object-fit:contain;display:block;position:absolute;right:20px;bottom:0;filter:drop-shadow(0 4px 16px rgba(0,0,0,0.22));z-index:3;" />`
-    : '';
+  const nukkiTag = `<div style="position:absolute;right:24px;bottom:0;z-index:3;display:flex;flex-direction:column;align-items:center;gap:4px;opacity:0.18;"><svg width="120" height="120" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>`;
 
   // 가로 고정 너비 (A4 가로 기준)
   const EXPORT_W = 900;
