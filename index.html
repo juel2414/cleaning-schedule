@@ -2216,8 +2216,9 @@ async function claimExistingData(uid){
 
 sb.auth.onAuthStateChange(async (event, session) => {
   if(session?.user){
+    const wasLoggedOut = !currentUser;
     currentUser = session.user;
-    if(event==='SIGNED_IN' || event==='INITIAL_SESSION' || event==='TOKEN_REFRESHED'){
+    if(wasLoggedOut || event==='SIGNED_IN'){
       hideAuthScreen();
       await loadAll();
     }
