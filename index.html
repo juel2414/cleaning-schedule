@@ -454,6 +454,7 @@ function render(){
       ${tabBtn('areas','구역 관리')}
       ${tabBtn('generate','이번 달 배정')}
       ${tabBtn('history','이력')}
+      ${currentUser?.id==='2f00ba83-22d1-45a6-8980-5c6d986db22b' ? tabBtn('admin','👤 어드민') : ''}
       <button onclick="signOut()" style="margin-left:auto;font-size:12px;padding:6px 12px;border-radius:8px;border:1.5px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;" title="${currentUser?.email||''}">로그아웃</button>
     </nav>
     <div id="tabBody"></div>
@@ -464,6 +465,7 @@ function render(){
   if(state.tab==='areas') body.innerHTML = renderAreasTab();
   if(state.tab==='generate') body.innerHTML = renderGenerateTab();
   if(state.tab==='history') body.innerHTML = renderHistoryTab();
+  if(state.tab==='admin') renderAdminTab(body);
   bindEvents();
 }
 function tabBtn(id,label){
@@ -943,6 +945,40 @@ function renderDraftBoard(entry, editable){
 }
 
 // ---------- history tab ----------
+async function renderAdminTab(container){
+  container.innerHTML = `<div class="card"><h2>회원 관리</h2><p class="desc" id="adminMsg">불러오는 중...</p><div id="adminList"></div></div>`;
+  const {data:users, error} = await sb.from('user_profiles').select('*').order('created_at',{ascending:true});
+  if(error){ document.getElementById('adminMsg').textContent='불러오기 실패: '+error.message; return; }
+  document.getElementById('adminMsg').textContent=`가입 계정 ${users.length}명`;
+  const ADMIN_ID = '2f00ba83-22d1-45a6-8980-5c6d986db22b';
+  document.getElementById('adminList').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;margin-top:12px;">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;">이메일</div>
+      <div style="font-size:11px;color:var(--muted);font-weight:600;">가입일</div>
+      <div></div>
+      ${users.map(u=>`
+        <div style="font-size:13px;display:flex;align-items:center;gap:6px;">
+          ${u.id===ADMIN_ID?'<span style="font-size:10px;background:#fde68a;color:#92400e;border-radius:8px;padding:1px 7px;font-weight:700;">어드민</span>':''}
+          ${u.email||'-'}
+        </div>
+        <div style="font-size:12px;color:var(--muted);">${new Date(u.created_at).toLocaleDateString('ko-KR')}</div>
+        <div>${u.id===ADMIN_ID?'':'<button class="btn ghost small danger" onclick="adminDeleteUser(\''+u.id+'\',\''+u.email+'\')">삭제</button>'}</div>
+      `).join('')}
+    </div>`;
+}
+
+async function adminDeleteUser(userId, email){
+  if(!confirm(`"${email}" 계정을 삭제할까요?\n해당 계정의 모든 데이터(인원/구역/배정)도 함께 삭제됩니다.`)) return;
+  const {data:{session}} = await sb.auth.getSession();
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/delete-user`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+    body:JSON.stringify({targetUserId:userId})
+  });
+  if(res.ok){ toast(`"${email}" 계정을 삭제했어요.`); setTab('admin'); }
+  else { const e=await res.json(); toast('삭제 실패: '+(e.error||res.statusText)); }
+}
+
 function renderHistoryTab(){
   if(state.history.length===0) return '<div class="card"><div class="empty">아직 확정된 배정표 이력이 없어요.</div></div>';
   const items = [...state.history].reverse().map(h=>`
