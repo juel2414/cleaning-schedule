@@ -59,36 +59,15 @@
 
   /* ── HERO SLIDESHOW ── */
   .hero{
-    width:100%;height:280px;position:relative;overflow:hidden;
+    width:100%;position:relative;overflow:hidden;
     border-radius:0 0 28px 28px;margin-bottom:28px;
+    background:linear-gradient(135deg,#3730a3 0%,#6d28d9 50%,#a21caf 100%);
+    padding:36px 28px 32px;box-sizing:border-box;
   }
-  .hero-slide{
-    position:absolute;inset:0;
-    transform:translateX(100%);
-    transition:transform 0.6s cubic-bezier(0.4,0,0.2,1);
-    z-index:0;
-  }
-  .hero-slide.active{transform:translateX(0);z-index:1;}
-  .hero-slide.prev{transform:translateX(-100%);z-index:0;}
-  .hero-slide img{
-    width:100%;height:100%;object-fit:cover;object-position:center 30%;display:block;
-  }
-  .hero-slide::after{
-    content:'';position:absolute;inset:0;
-    background:linear-gradient(110deg,rgba(8,14,50,0.72) 0%,rgba(8,14,50,0.38) 55%,rgba(8,14,50,0.08) 100%);
-  }
-  .hero-text{position:absolute;bottom:28px;left:28px;z-index:2;color:#fff;}
-  .hero-text .brand{font-size:26px;font-weight:900;letter-spacing:-0.8px;text-shadow:0 2px 10px rgba(0,0,0,0.5);}
-  .hero-text .sub{font-size:12.5px;opacity:0.82;margin-top:5px;text-shadow:0 1px 5px rgba(0,0,0,0.4);max-width:260px;line-height:1.5;}
-  .hero-dots{
-    position:absolute;bottom:14px;right:20px;z-index:3;
-    display:flex;gap:5px;
-  }
-  .hero-dot{
-    width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.4);
-    cursor:pointer;transition:background .3s,transform .3s;
-  }
-  .hero-dot.active{background:#fff;transform:scale(1.3);}
+  .hero-text{position:relative;z-index:2;color:#fff;}
+  .hero-text .brand{font-size:26px;font-weight:900;letter-spacing:-0.8px;}
+  .hero-text .sub{font-size:12.5px;opacity:0.82;margin-top:5px;max-width:280px;line-height:1.6;}
+  .hero-deco{position:absolute;right:-20px;top:-20px;opacity:0.08;}
   /* ── NAV ── */
   .app-inner{padding:0 20px;}
   .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px;}
@@ -410,21 +389,16 @@ function render(){
   if(!state.loaded){ root.innerHTML = '<div class="empty">불러오는 중...</div>'; return; }
   root.innerHTML = `
     <div class="hero">
-      <div class="hero-slide active"><img src="./images/원본/DSC02220.JPG" alt=""></div>
-      <div class="hero-slide"><img src="./images/원본/주님한분5.JPG" alt=""></div>
-      <div class="hero-slide"><img src="./images/원본/S3_01057.JPG" alt=""></div>
-      <div class="hero-slide"><img src="./images/원본/주님한분3.JPG" alt=""></div>
-      <div class="hero-slide"><img src="./images/원본/주님 한 분만으로.JPG" alt=""></div>
-      <div class="hero-slide"><img src="./images/원본/중력2.JPG" alt=""></div>
-      <div class="hero-slide"><img src="./images/원본/IMG_7110.JPG" alt=""></div>
-      <div class="hero-slide"><img src="./images/원본/S3_01036.JPG" alt=""></div>
-      <div class="hero-slide"><img src="./images/원본/주님한분4.JPG" alt=""></div>
-      <div class="hero-slide"><img src="./images/원본/DSC02130.JPG" alt=""></div>
+      <svg class="hero-deco" width="260" height="260" viewBox="0 0 260 260" fill="none"><circle cx="130" cy="130" r="120" stroke="white" stroke-width="2"/><circle cx="130" cy="130" r="80" stroke="white" stroke-width="1.5"/><circle cx="130" cy="130" r="40" stroke="white" stroke-width="1"/></svg>
       <div class="hero-text">
-        <div class="brand">청소 당번표 관리</div>
-        <div class="sub">인원과 구역을 등록하면 조건에 맞춰 매달 배정표를 자동으로 만들어드려요.</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div style="width:36px;height:36px;background:rgba(255,255,255,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          <div class="brand">청소 당번표 관리</div>
+        </div>
+        <div class="sub">인원과 구역을 등록하면 조건에 맞춰 매달 배정표를<br>자동으로 만들어드려요.</div>
       </div>
-      <div class="hero-dots" id="heroDots"></div>
     </div>
     <div class="app-inner">
     <nav>
@@ -442,40 +416,6 @@ function render(){
   if(state.tab==='generate') body.innerHTML = renderGenerateTab();
   if(state.tab==='history') body.innerHTML = renderHistoryTab();
   bindEvents();
-  initHeroSlideshow();
-}
-function initHeroSlideshow(){
-  const slides = document.querySelectorAll('.hero-slide');
-  const dotsEl = document.getElementById('heroDots');
-  if(!slides.length || !dotsEl) return;
-  // clear previous interval
-  if(window._heroTimer) clearInterval(window._heroTimer);
-  let cur = 0;
-  // build dots
-  dotsEl.innerHTML = '';
-  slides.forEach((_,i)=>{
-    const d = document.createElement('div');
-    d.className = 'hero-dot' + (i===0?' active':'');
-    d.onclick = ()=>{ goTo(i); restartTimer(); };
-    dotsEl.appendChild(d);
-  });
-  function goTo(n){
-    const prev = cur;
-    cur = (n + slides.length) % slides.length;
-    if(prev === cur) return;
-    slides[prev].classList.remove('active');
-    slides[prev].classList.add('prev');
-    dotsEl.children[prev].classList.remove('active');
-    slides[cur].classList.remove('prev');
-    slides[cur].classList.add('active');
-    dotsEl.children[cur].classList.add('active');
-    setTimeout(()=>{ slides[prev].classList.remove('prev'); }, 650);
-  }
-  function restartTimer(){
-    clearInterval(window._heroTimer);
-    window._heroTimer = setInterval(()=>goTo(cur+1), 4000);
-  }
-  restartTimer();
 }
 function tabBtn(id,label){
   return `<button class="${state.tab===id?'active':''}" data-tab="${id}">${label}</button>`;
