@@ -289,9 +289,49 @@
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   @media(max-width:640px){.grid2{grid-template-columns:1fr;}}
   .month-label{font-family:'Georgia',serif;font-size:20px;font-weight:700;color:var(--navy);}
+
+  /* ── GUIDE POPUP ── */
+  #guideOverlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  #guideOverlay.hidden{display:none;}
+  .guide-card{
+    background:#fff;border-radius:22px;padding:28px 24px 24px;
+    max-width:440px;width:100%;max-height:80vh;overflow-y:auto;
+    box-shadow:0 16px 60px rgba(30,58,138,0.22);
+  }
+  .guide-card h2{margin:0 0 16px;font-size:18px;color:var(--navy);display:flex;align-items:center;gap:8px;}
+  .guide-step{display:flex;gap:12px;margin-bottom:14px;align-items:flex-start;}
+  .guide-num{
+    min-width:28px;height:28px;border-radius:50%;
+    background:var(--navy);color:#fff;font-size:12px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;margin-top:1px;
+  }
+  .guide-step-text{font-size:13.5px;line-height:1.6;color:var(--ink);}
+  .guide-step-text strong{color:var(--navy);}
+  .guide-close{
+    width:100%;margin-top:20px;padding:13px;border-radius:12px;
+    background:var(--navy);color:#fff;font-size:14px;font-weight:700;
+    border:none;cursor:pointer;
+  }
 </style>
 </head>
 <body>
+
+<!-- 사용 설명서 팝업 -->
+<div id="guideOverlay" class="hidden">
+  <div class="guide-card">
+    <h2>🧹 청소 당번표 앱 사용법</h2>
+    <div class="guide-step"><div class="guide-num">1</div><div class="guide-step-text"><strong>인원 관리</strong> 탭에서 청소에 참여할 인원을 등록해요. 이름, 성별, 팀, 역할(리더/멋쟁이/일반)을 설정하세요.</div></div>
+    <div class="guide-step"><div class="guide-num">2</div><div class="guide-step-text"><strong>구역 관리</strong> 탭에서 청소 구역을 추가해요. 구역별 정원, 난이도, 실내/외 여부, 점검자 동행 여부를 설정하세요.</div></div>
+    <div class="guide-step"><div class="guide-num">3</div><div class="guide-step-text"><strong>이번 달 배정</strong> 탭에서 배정 생성 버튼을 누르면 자동으로 균형 있게 인원이 배정돼요. 결과를 확인하고 수동으로 수정도 가능해요.</div></div>
+    <div class="guide-step"><div class="guide-num">4</div><div class="guide-step-text"><strong>배정 확정</strong>하면 이력에 저장돼요. 이미지로 저장하거나 OCR로 기존 표를 불러올 수도 있어요.</div></div>
+    <div class="guide-step"><div class="guide-num">5</div><div class="guide-step-text"><strong>배정 규칙</strong>: 필립·진우는 같은 구역 배정 안 됨 / 멋쟁이는 반드시 리더와 같은 구역 / 구역당 멋쟁이 최대 1명.</div></div>
+    <button class="guide-close" onclick="document.getElementById('guideOverlay').classList.add('hidden')">시작하기 →</button>
+  </div>
+</div>
+
 <div id="authScreen">
   <div class="auth-card">
     <div class="auth-logo">
@@ -2224,6 +2264,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
     if(wasLoggedOut || event==='SIGNED_IN'){
       hideAuthScreen();
       await loadAll();
+      document.getElementById('guideOverlay').classList.remove('hidden');
     }
   } else {
     currentUser = null;
