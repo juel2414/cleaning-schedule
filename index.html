@@ -375,7 +375,7 @@ const state = {
   _editingPersonId: null,
   _peopleFilter: 'all',
   _peopleSort: 'default',
-  _sections: JSON.parse(localStorage.getItem('people_sections') || '["상황실","중고등","초등"]')
+  _sections: JSON.parse(localStorage.getItem('people_sections') || '[]')
 };
 function saveSections(){ localStorage.setItem('people_sections', JSON.stringify(state._sections)); }
 
