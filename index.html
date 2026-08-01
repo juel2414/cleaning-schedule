@@ -375,9 +375,11 @@ const state = {
   _editingPersonId: null,
   _peopleFilter: 'all',
   _peopleSort: 'default',
-  _sections: JSON.parse(localStorage.getItem('people_sections') || '[]')
+  _sections: []
 };
-function saveSections(){ localStorage.setItem('people_sections', JSON.stringify(state._sections)); }
+function sectionsKey(){ return 'people_sections_'+(currentUser?.id||'guest'); }
+function saveSections(){ localStorage.setItem(sectionsKey(), JSON.stringify(state._sections)); }
+function loadSections(){ state._sections = JSON.parse(localStorage.getItem(sectionsKey()) || '[]'); }
 
 function dbPersonToState(p){
   return { id:p.id, name:p.name, gender:p.gender, category:p.category, team:p.team||'', role:p.role||null, mentorId:p.mentor_id, age:p.age||null };
@@ -390,6 +392,7 @@ function dbScheduleToState(s){
 }
 
 async function loadAll(){
+  loadSections();
   try{
     const [{data:people}, {data:areas}, {data:schedules}] = await Promise.all([
       sb.from('people').select('*').order('created_at', {ascending:true}),
