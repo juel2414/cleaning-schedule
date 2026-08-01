@@ -576,7 +576,7 @@ function renderPeopleTab(){
   const filterBar = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
     <div class="filter-tabs" style="margin-bottom:0;flex:1;">
       <button class="filter-tab${f==='all'?' active':''}" data-f="all">전체 ${counts.all}</button>
-      <button class="filter-tab${f==='worker'?' active':''}" data-f="worker">사역자 ${counts.worker}</button>
+      ${counts.worker>0?`<button class="filter-tab${f==='worker'?' active':''}" data-f="worker">사역자 ${counts.worker}</button>`:''}
       ${state._sections.map(s=>`<button class="filter-tab${f===s?' active':''}" data-f="${s}">${s} ${counts[s]||0}</button>`).join('')}
     </div>
     <div class="indoor-toggle" style="flex-shrink:0;">
