@@ -379,7 +379,11 @@ const state = {
 };
 function sectionsKey(){ return 'people_sections_'+(currentUser?.id||'guest'); }
 function saveSections(){ localStorage.setItem(sectionsKey(), JSON.stringify(state._sections)); }
-function loadSections(){ state._sections = JSON.parse(localStorage.getItem(sectionsKey()) || '[]'); }
+function loadSections(){
+  const ADMIN_ID = '2f00ba83-22d1-45a6-8980-5c6d986db22b';
+  const def = currentUser?.id===ADMIN_ID ? '["상황실","중고등","초등"]' : '[]';
+  state._sections = JSON.parse(localStorage.getItem(sectionsKey()) || def);
+}
 
 function dbPersonToState(p){
   return { id:p.id, name:p.name, gender:p.gender, category:p.category, team:p.team||'', role:p.role||null, mentorId:p.mentor_id, age:p.age||null };
