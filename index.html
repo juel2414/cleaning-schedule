@@ -2242,7 +2242,11 @@ async function doAuth(){
   } else {
     const {error} = await sb.auth.signUp({email, password:pw});
     if(error){ msg.textContent=error.message; msg.className='auth-msg error'; }
-    else { msg.textContent='가입 완료! 이메일 인증 후 로그인해주세요.'; msg.className='auth-msg success'; }
+    else {
+      // 가입 후 바로 로그인 시도 (트리거에서 email_confirmed_at 자동 처리)
+      const {error: loginError} = await sb.auth.signInWithPassword({email, password:pw});
+      if(loginError){ msg.textContent='가입 완료! 로그인해주세요.'; msg.className='auth-msg success'; }
+    }
   }
 }
 
