@@ -503,7 +503,7 @@ function render(){
       ${tabBtn('history','이력')}
       ${currentUser?.id==='2f00ba83-22d1-45a6-8980-5c6d986db22b' ? tabBtn('admin','👤 어드민') : ''}
       <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
-        <span style="font-size:11px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${currentUser?.email||''}">${currentUser?.email||''}</span>
+        <span style="font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${currentUser?.email||''}">${currentUser?.email||''}</span>
         <button onclick="signOut()" style="font-size:12px;padding:6px 12px;border-radius:8px;border:1.5px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;">로그아웃</button>
       </div>
     </nav>
@@ -2218,7 +2218,7 @@ async function handleRosterImage(file){
 }
 
 // ── AUTH ──
-function showAuthScreen(){ document.getElementById('authScreen').classList.add('show'); document.getElementById('root').style.display='none'; }
+function showAuthScreen(){ document.getElementById('guideOverlay').classList.add('hidden'); document.getElementById('authScreen').classList.add('show'); document.getElementById('root').style.display='none'; }
 function hideAuthScreen(){ document.getElementById('authScreen').classList.remove('show'); document.getElementById('root').style.display=''; }
 
 let _authMode = 'login';
