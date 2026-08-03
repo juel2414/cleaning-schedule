@@ -2241,9 +2241,12 @@ async function doAuth(){
     const {error} = await sb.auth.signInWithPassword({email, password:pw});
     if(error){ msg.textContent=error.message==='Invalid login credentials'?'이메일 또는 비밀번호가 맞지 않아요.':error.message; msg.className='auth-msg error'; }
   } else {
-    const {error} = await sb.auth.signUp({email, password:pw});
+    const {data: signUpData, error} = await sb.auth.signUp({email, password:pw});
     if(error){ msg.textContent=error.message; msg.className='auth-msg error'; }
-    else {
+    else if(!signUpData?.session && !signUpData?.user?.identities?.length){
+      // 이미 존재하는 이메일 (user_repeated_signup) — 비밀번호 미설정 상태
+      msg.textContent='이미 가입된 이메일이에요. 구글 로그인을 사용하거나 비밀번호 찾기를 이용해주세요.'; msg.className='auth-msg error';
+    } else {
       // 가입 후 바로 로그인 시도 (트리거에서 email_confirmed_at 자동 처리)
       const {error: loginError} = await sb.auth.signInWithPassword({email, password:pw});
       if(loginError){ msg.textContent='가입 완료! 로그인해주세요.'; msg.className='auth-msg success'; }
