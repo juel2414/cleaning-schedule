@@ -382,8 +382,8 @@ const state = {
 function sectionsKey(){ return 'people_sections_'+(currentUser?.id||'guest'); }
 function saveSections(){ localStorage.setItem(sectionsKey(), JSON.stringify(state._sections)); }
 function loadSections(){
-  const ADMIN_ID = '2f00ba83-22d1-45a6-8980-5c6d986db22b';
-  const def = currentUser?.id===ADMIN_ID ? '["상황실","중고등","초등"]' : '[]';
+  const DEFAULT_SECTION_USERS = ['2f00ba83-22d1-45a6-8980-5c6d986db22b','6ed45ff8-eebf-4b32-aa20-3cdecfa71059'];
+  const def = DEFAULT_SECTION_USERS.includes(currentUser?.id) ? '["상황실","중고등","초등"]' : '[]';
   state._sections = JSON.parse(localStorage.getItem(sectionsKey()) || def);
 }
 
