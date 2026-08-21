@@ -421,6 +421,24 @@ function isSameName(a, b){
   return a.endsWith(b) || b.endsWith(a);
 }
 
+let _importMode = 'add';
+function setImportMode(mode){
+  _importMode = mode;
+  const addBtn = document.getElementById('modeAddBtn');
+  const exBtn = document.getElementById('modeExcludeBtn');
+  const desc = document.getElementById('importModeDesc');
+  if(!addBtn) return;
+  if(mode === 'add'){
+    addBtn.style.background = 'var(--navy)'; addBtn.style.color = '#fff';
+    exBtn.style.background = '#fff'; exBtn.style.color = 'var(--muted)';
+    if(desc) desc.textContent = '명렬표의 이름을 인원 목록에 추가해요';
+  } else {
+    exBtn.style.background = 'var(--red)'; exBtn.style.color = '#fff';
+    addBtn.style.background = '#fff'; addBtn.style.color = 'var(--muted)';
+    if(desc) desc.textContent = '명렬표의 이름과 일치하는 인원을 목록에서 제외해요';
+  }
+}
+
 function loadSections(){
   const DEFAULT_SECTION_USERS = ['2f00ba83-22d1-45a6-8980-5c6d986db22b','6ed45ff8-eebf-4b32-aa20-3cdecfa71059'];
   const def = DEFAULT_SECTION_USERS.includes(currentUser?.id) ? '["상황실","중고등","초등"]' : '[]';
@@ -737,6 +755,14 @@ function renderPeopleTab(){
         <div style="flex:1;min-width:0;">
           <h2>이미지로 불러오기</h2>
           <p class="desc">명렬표나 청소 당번표 이미지를 올리면 구역과 인원을 자동으로 추출해드려요.</p>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <span style="font-size:12.5px;font-weight:600;color:var(--ink);">모드</span>
+            <div id="importModeToggle" style="display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:12.5px;font-weight:600;">
+              <button id="modeAddBtn" onclick="setImportMode('add')" style="padding:5px 14px;background:var(--navy);color:#fff;border:none;cursor:pointer;transition:background .15s;">+ 추가</button>
+              <button id="modeExcludeBtn" onclick="setImportMode('exclude')" style="padding:5px 14px;background:#fff;color:var(--muted);border:none;cursor:pointer;transition:background .15s;">− 제외</button>
+            </div>
+            <span id="importModeDesc" style="font-size:11.5px;color:var(--muted);">명렬표의 이름을 인원 목록에 추가해요</span>
+          </div>
           <div class="upload-box" id="uploadBox">이미지를 클릭해서 선택하거나 드래그해서 놓아주세요<br><span style="font-size:11px">JPG, PNG 지원</span></div>
           <input type="file" id="fileInput" accept="image/*" style="display:none">
           <div id="uploadStatus" style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.7;"></div>
@@ -2068,6 +2094,7 @@ async function handleRosterImage(file){
   const previewEl = document.getElementById('importPreview');
   statusEl.textContent = '이미지를 분석하는 중...';
   if(previewEl) previewEl.innerHTML = '';
+  const isExcludeMode = _importMode === 'exclude';
   try{
     const base64 = await new Promise((res,rej)=>{
       const r = new FileReader();
@@ -2159,14 +2186,58 @@ async function handleRosterImage(file){
 
     // ── 명렬표(인원 목록) 형식 ─────────────────────────────────
     const areas = Array.isArray(data.areas) ? data.areas.filter(a=>a.name) : [];
-    const newAreas = areas.filter(a=>!state.areas.some(x=>x.name===a.name));
-    const dupAreas = areas.filter(a=>state.areas.some(x=>x.name===a.name));
 
     // 인원 (성별·카테고리 포함)
     let people = Array.isArray(data.people) && data.people.length>0
       ? data.people
       : (Array.isArray(data.names) ? data.names.map(n=>({name:n,gender:'m',category:'normal'})) : []);
     people = people.filter(p=>p.name && p.name.trim().length>=2);
+
+    // ── 제외 모드 ─────────────────────────────────────────────
+    if(isExcludeMode){
+      const toExclude = people.filter(p=> state.people.some(x=>isSameName(x.name, p.name.trim())));
+      if(toExclude.length === 0 && people.length === 0){
+        statusEl.textContent = '인식하지 못했어요. 다시 시도해주세요.'; return;
+      }
+      if(toExclude.length === 0){
+        statusEl.innerHTML = `<strong>분석 완료!</strong><br>일치하는 인원이 없어요. (인식된 이름 ${people.length}명)`;
+        return;
+      }
+      statusEl.innerHTML = `<strong>분석 완료!</strong> 제외 대상 ${toExclude.length}명`;
+      if(!previewEl) return;
+      const cancelBtn = `<button class="btn ghost small" id="cancelImportBtn" style="margin-bottom:8px;">✕ 취소하기</button>`;
+      previewEl.innerHTML = cancelBtn + `
+        <div class="card">
+          <h2>제외할 인원 (${toExclude.length}명)</h2>
+          <p class="desc">아래 인원을 목록에서 제거해요. 확인 후 적용해주세요.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+            ${toExclude.map(p=>`<span class="chip" style="background:var(--red-light);border-color:var(--red);">
+              <span class="tag ${p.gender==='f'?'f':'m'}" style="font-size:10px;">${p.gender==='f'?'여':'남'}</span>
+              ${p.name.trim()}
+            </span>`).join('')}
+          </div>
+          <button class="btn" id="excludePeopleBtn" style="background:var(--red);border-color:var(--red-dark);">인원 ${toExclude.length}명 제외하기</button>
+        </div>`;
+      document.getElementById('cancelImportBtn').onclick = ()=>{ previewEl.innerHTML=''; statusEl.textContent=''; };
+      document.getElementById('excludePeopleBtn').onclick = async()=>{
+        const btn = document.getElementById('excludePeopleBtn');
+        btn.disabled=true; btn.textContent='제외 중...';
+        for(const p of toExclude){
+          const match = state.people.find(x=>isSameName(x.name,p.name.trim()));
+          if(match){
+            await deletePersonDB(match.id);
+            state.people = state.people.filter(x=>x.id!==match.id);
+          }
+        }
+        btn.textContent=`✓ ${toExclude.length}명 제외 완료`;
+        toast(`인원 ${toExclude.length}명을 제외했어요.`);
+        render();
+      };
+      return;
+    }
+
+    const newAreas = areas.filter(a=>!state.areas.some(x=>x.name===a.name));
+    const dupAreas = areas.filter(a=>state.areas.some(x=>x.name===a.name));
     const seen = new Set();
     const newPeople = people.filter(p=>{
       const name = p.name.trim();
