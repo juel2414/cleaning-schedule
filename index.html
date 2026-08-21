@@ -381,6 +381,13 @@ const state = {
 };
 function sectionsKey(){ return 'people_sections_'+(currentUser?.id||'guest'); }
 function saveSections(){ localStorage.setItem(sectionsKey(), JSON.stringify(state._sections)); }
+function isSameName(a, b){
+  a = (a||'').trim(); b = (b||'').trim();
+  if(a===b) return true;
+  // 성이 붙었거나 빠진 경우 (e.g. "철수"↔"김철수")
+  return a.endsWith(b) || b.endsWith(a);
+}
+
 function loadSections(){
   const DEFAULT_SECTION_USERS = ['2f00ba83-22d1-45a6-8980-5c6d986db22b','6ed45ff8-eebf-4b32-aa20-3cdecfa71059'];
   const def = DEFAULT_SECTION_USERS.includes(currentUser?.id) ? '["상황실","중고등","초등"]' : '[]';
@@ -2105,7 +2112,7 @@ async function handleRosterImage(file){
         const allNames = [...new Set(rows.flatMap(r=>[...(r.assignees||[]), r.inspector||''].filter(n=>n && n.length>=2)))];
         let added = 0;
         for(const name of allNames){
-          if(!state.people.find(p=>p.name===name)){
+          if(!state.people.find(p=>isSameName(p.name,name))){
             const person = {name, gender:'m', category:'normal', team:'', role:null, mentorId:null, age:null};
             await addPersonDB(person); state.people.push(person); added++;
           }
@@ -2132,9 +2139,9 @@ async function handleRosterImage(file){
       const name = p.name.trim();
       if(seen.has(name)) return false;
       seen.add(name);
-      return !state.people.some(x=>x.name===name);
+      return !state.people.some(x=>isSameName(x.name,name));
     });
-    const dupPeople = people.filter(p=>state.people.some(x=>x.name===p.name.trim())).map(p=>p.name.trim());
+    const dupPeople = people.filter(p=>state.people.some(x=>isSameName(x.name,p.name.trim()))).map(p=>p.name.trim());
 
     if(areas.length===0 && people.length===0){
       statusEl.textContent = '인식하지 못했어요. 다시 시도해주세요.';
