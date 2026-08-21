@@ -395,6 +395,43 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
 });
 let currentUser = null;
 const ADMIN_ID = '2f00ba83-22d1-45a6-8980-5c6d986db22b';
+
+// ── 실행 취소 ──────────────────────────────────────────────
+const _undoStack = [];
+function pushUndo(action){ _undoStack.push(action); if(_undoStack.length>20) _undoStack.shift(); renderUndoBtn(); }
+function renderUndoBtn(){
+  let btn = document.getElementById('undoFloatBtn');
+  if(_undoStack.length===0){ if(btn) btn.style.display='none'; return; }
+  if(!btn){
+    btn = document.createElement('button');
+    btn.id = 'undoFloatBtn';
+    btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:500;background:var(--ink);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.18);display:flex;align-items:center;gap:6px;transition:opacity .2s;';
+    btn.innerHTML = '↩ 실행 취소';
+    btn.onclick = doUndo;
+    document.body.appendChild(btn);
+  }
+  btn.style.display = 'flex';
+}
+async function doUndo(){
+  const action = _undoStack.pop();
+  if(!action) return;
+  const btn = document.getElementById('undoFloatBtn');
+  if(btn){ btn.textContent='취소 중...'; btn.disabled=true; }
+  try{
+    if(action.type==='add_people'){
+      for(const p of action.people){ await deletePersonDB(p.id); state.people=state.people.filter(x=>x.id!==p.id); }
+      toast(`${action.people.length}명 추가를 취소했어요.`);
+    } else if(action.type==='delete_people'){
+      for(const p of action.people){ await addPersonDB(p); state.people.push(p); }
+      toast(`${action.people.length}명 삭제를 취소했어요.`);
+    } else if(action.type==='add_areas'){
+      for(const a of action.areas){ await deleteAreaDB(a.id); state.areas=state.areas.filter(x=>x.id!==a.id); }
+      toast(`구역 ${action.areas.length}개 추가를 취소했어요.`);
+    }
+  } catch(e){ toast('실행 취소 중 오류가 발생했어요.'); }
+  renderUndoBtn();
+  render();
+}
 function isAdmin(){ return currentUser?.id === ADMIN_ID; }
 const NUKKI_GLOW = `const el=this;const colors=[['#7dd3fc','#38bdf8','rgba(56,189,248,0.45)'],['#f9a8d4','#ec4899','rgba(236,72,153,0.4)'],['#6ee7b7','#10b981','rgba(16,185,129,0.4)'],['#fcd34d','#f59e0b','rgba(245,158,11,0.4)'],['#c4b5fd','#7c3aed','rgba(124,58,237,0.4)'],['#fb923c','#ea580c','rgba(234,88,12,0.4)']];const c=colors[Math.floor(Math.random()*colors.length)];el.style.setProperty('--gc1',c[0]);el.style.setProperty('--gc2',c[1]);el.style.setProperty('--gc3',c[2]);el.classList.add('glow');clearTimeout(el._glowT);el._glowT=setTimeout(()=>el.classList.remove('glow'),3000)`;
 
@@ -1380,6 +1417,7 @@ function bindEvents(){
       const person = { name, gender, category, team, role, mentorId, age };
       await addPersonDB(person);
       state.people.push(person);
+      pushUndo({type:'add_people', people:[{...person}]});
       pNameInput.value=''; cancelPersonBtn.style.display='none';
       render();
       toast('인원을 추가했어요.', async ()=>{
@@ -2222,13 +2260,16 @@ async function handleRosterImage(file){
       document.getElementById('excludePeopleBtn').onclick = async()=>{
         const btn = document.getElementById('excludePeopleBtn');
         btn.disabled=true; btn.textContent='제외 중...';
+        const removedPeople = [];
         for(const p of toExclude){
           const match = state.people.find(x=>isSameName(x.name,p.name.trim()));
           if(match){
+            removedPeople.push({...match});
             await deletePersonDB(match.id);
             state.people = state.people.filter(x=>x.id!==match.id);
           }
         }
+        pushUndo({type:'delete_people', people:removedPeople});
         btn.textContent=`✓ ${toExclude.length}명 제외 완료`;
         toast(`인원 ${toExclude.length}명을 제외했어요.`);
         render();
@@ -2297,10 +2338,12 @@ async function handleRosterImage(file){
     if(addAreasBtn){
       addAreasBtn.onclick = async()=>{
         addAreasBtn.disabled=true; addAreasBtn.textContent='추가 중...';
+        const addedAreas = [];
         for(const a of newAreas){
           const area = {name:a.name, capacity:a.capacity||1, difficulty:1};
-          await addAreaDB(area); state.areas.push(area);
+          await addAreaDB(area); state.areas.push(area); addedAreas.push({...area});
         }
+        pushUndo({type:'add_areas', areas:addedAreas});
         addAreasBtn.textContent=`✓ ${newAreas.length}개 추가 완료`;
         toast(`구역 ${newAreas.length}개를 추가했어요.`);
       };
@@ -2311,6 +2354,7 @@ async function handleRosterImage(file){
     if(addPeopleBtn){
       addPeopleBtn.onclick = async()=>{
         addPeopleBtn.disabled=true; addPeopleBtn.textContent='추가 중...';
+        const addedPeople = [];
         for(const p of newPeople){
           const person = {
             name: p.name.trim(),
@@ -2318,8 +2362,9 @@ async function handleRosterImage(file){
             category: ['worker','mentor','mentee','normal'].includes(p.category)?p.category:'normal',
             team:'', role:null, mentorId:null, age:null
           };
-          await addPersonDB(person); state.people.push(person);
+          await addPersonDB(person); state.people.push(person); addedPeople.push({...person});
         }
+        pushUndo({type:'add_people', people:addedPeople});
         addPeopleBtn.textContent=`✓ ${newPeople.length}명 추가 완료`;
         toast(`인원 ${newPeople.length}명을 추가했어요.`);
         render();
