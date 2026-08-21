@@ -359,10 +359,11 @@
     <div class="guide-step"><div class="guide-num">3</div><div class="guide-step-text"><strong>이번 달 배정</strong> 탭에서 배정 생성 버튼을 누르면 팀·성별·역할 균형을 고려해 자동 배정돼요. 결과를 직접 수정할 수도 있어요.</div></div>
     <div class="guide-step"><div class="guide-num">4</div><div class="guide-step-text"><strong>배정 확정</strong>하면 이력에 저장되고, 이미지로 저장해 공유할 수 있어요. OCR 기능으로 기존 표를 사진에서 불러올 수도 있어요.</div></div>
     <div class="guide-step"><div class="guide-num">5</div><div class="guide-step-text">모든 데이터는 <strong>내 계정에만 저장</strong>되고 다른 계정과 공유되지 않아요. 언제 어디서든 로그인해서 사용할 수 있어요.</div></div>
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-      <button class="guide-close" style="background:var(--muted);color:var(--bg);" onclick="dismissGuide(false)">닫기</button>
-      <button class="guide-close" onclick="dismissGuide(true)">다시 보지 않기</button>
-    </div>
+    <label style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:12px;cursor:pointer;font-size:14px;color:var(--muted);">
+      <input type="checkbox" id="guideDontShowCheck" style="width:16px;height:16px;cursor:pointer;accent-color:var(--primary);">
+      다시 보지 않기
+    </label>
+    <button class="guide-close" onclick="dismissGuide(document.getElementById('guideDontShowCheck').checked)">닫기</button>
   </div>
 </div>
 
