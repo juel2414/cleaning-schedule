@@ -293,6 +293,25 @@
     display:flex;align-items:center;justify-content:center;padding:20px;
   }
   #guideOverlay.hidden{display:none;}
+  #dupPopupOverlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:300;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  #dupPopupOverlay.hidden{display:none;}
+  .dup-popup{
+    background:#fff;border-radius:14px;padding:24px;
+    max-width:480px;width:100%;max-height:80vh;display:flex;flex-direction:column;
+    border:1px solid var(--line);box-shadow:0 8px 32px rgba(0,0,0,0.12);
+  }
+  .dup-popup h3{margin:0 0 4px;font-size:16px;font-weight:700;color:var(--ink);}
+  .dup-popup .dup-desc{font-size:13px;color:var(--muted);margin-bottom:16px;}
+  .dup-list{overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+  .dup-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);}
+  .dup-row input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--navy);}
+  .dup-row label{display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;font-size:13.5px;color:var(--ink);}
+  .dup-row .dup-existing{color:var(--muted);font-size:12px;}
+  .dup-actions{display:flex;gap:8px;flex-shrink:0;}
+  .dup-actions button{flex:1;}
   .guide-card{
     background:#fff;border-radius:16px;padding:28px 24px 24px;
     max-width:440px;width:100%;max-height:80vh;overflow-y:auto;
@@ -316,6 +335,20 @@
 </style>
 </head>
 <body>
+
+<!-- 중복 인원 확인 팝업 -->
+<div id="dupPopupOverlay" class="hidden">
+  <div class="dup-popup">
+    <h3>⚠️ 중복 인원 확인</h3>
+    <p class="dup-desc">이미 등록된 인원과 이름이 비슷해요. 그래도 추가할 항목을 선택해주세요.</p>
+    <div class="dup-list" id="dupList"></div>
+    <div class="dup-actions">
+      <button class="btn ghost small" id="dupCancelBtn">취소</button>
+      <button class="btn small" id="dupSelectBtn">선택 추가</button>
+      <button class="btn small" id="dupAllBtn">모두 추가</button>
+    </div>
+  </div>
+</div>
 
 <!-- 사용 설명서 팝업 -->
 <div id="guideOverlay" class="hidden">
@@ -2149,8 +2182,8 @@ async function handleRosterImage(file){
     }
 
     let statusParts = ['<strong>분석 완료!</strong>'];
-    if(dupAreas.length>0) statusParts.push(`🔁 중복 구역: ${dupAreas.map(a=>a.name).join(', ')}`);
-    if(dupPeople.length>0) statusParts.push(`🔁 중복 인원: ${dupPeople.join(', ')}`);
+    if(dupAreas.length>0) statusParts.push(`🔁 중복 구역 (건너뜀): ${dupAreas.map(a=>a.name).join(', ')}`);
+    if(dupPeople.length>0) statusParts.push(`⚠️ 중복 인원 ${dupPeople.length}명 — 아래에서 확인해주세요`);
     statusEl.innerHTML = statusParts.join('<br>');
 
     if(!previewEl) return;
@@ -2219,6 +2252,48 @@ async function handleRosterImage(file){
         addPeopleBtn.textContent=`✓ ${newPeople.length}명 추가 완료`;
         toast(`인원 ${newPeople.length}명을 추가했어요.`);
         render();
+      };
+    }
+
+    // 중복 인원 팝업
+    if(dupPeople.length>0){
+      const dupOverlay = document.getElementById('dupPopupOverlay');
+      const dupList = document.getElementById('dupList');
+      // dupPeople 배열을 원본 people 객체(성별 등 포함)와 매핑
+      const dupObjs = people.filter(p=>state.people.some(x=>isSameName(x.name,p.name.trim())));
+      dupList.innerHTML = dupObjs.map((p,i)=>{
+        const existing = state.people.find(x=>isSameName(x.name,p.name.trim()));
+        const existingLabel = existing && existing.name!==p.name.trim() ? `<span class="dup-existing">(기존: ${existing.name})</span>` : '';
+        return `<div class="dup-row">
+          <input type="checkbox" id="dup_${i}" data-idx="${i}">
+          <label for="dup_${i}">
+            <span class="tag ${p.gender==='f'?'f':'m'}" style="font-size:10px;">${p.gender==='f'?'여':'남'}</span>
+            ${p.name.trim()} ${existingLabel}
+          </label>
+        </div>`;
+      }).join('');
+      dupOverlay.classList.remove('hidden');
+
+      async function addDupPeople(selected){
+        for(const p of selected){
+          const person = {
+            name: p.name.trim(),
+            gender: p.gender==='f'?'f':'m',
+            category: ['worker','mentor','mentee','normal'].includes(p.category)?p.category:'normal',
+            team:'', role:null, mentorId:null, age:null
+          };
+          await addPersonDB(person); state.people.push(person);
+        }
+        dupOverlay.classList.add('hidden');
+        if(selected.length>0){ toast(`중복 인원 ${selected.length}명을 추가했어요.`); render(); }
+      }
+
+      document.getElementById('dupCancelBtn').onclick = ()=> dupOverlay.classList.add('hidden');
+      document.getElementById('dupAllBtn').onclick = ()=> addDupPeople(dupObjs);
+      document.getElementById('dupSelectBtn').onclick = ()=>{
+        const checked = [...dupList.querySelectorAll('input[type=checkbox]:checked')].map(el=>dupObjs[parseInt(el.dataset.idx)]);
+        if(checked.length===0){ toast('선택된 인원이 없어요.'); return; }
+        addDupPeople(checked);
       };
     }
   }catch(e){
