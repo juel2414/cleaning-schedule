@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cleaning-schedule-v5';
+const CACHE_NAME = 'cleaning-schedule-v6';
 const STATIC_FILES = [
   './manifest.json',
   './icon-192.png',
