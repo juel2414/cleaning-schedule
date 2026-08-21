@@ -360,8 +360,8 @@
     <div class="guide-step"><div class="guide-num">4</div><div class="guide-step-text"><strong>배정 확정</strong>하면 이력에 저장되고, 이미지로 저장해 공유할 수 있어요. OCR 기능으로 기존 표를 사진에서 불러올 수도 있어요.</div></div>
     <div class="guide-step"><div class="guide-num">5</div><div class="guide-step-text">모든 데이터는 <strong>내 계정에만 저장</strong>되고 다른 계정과 공유되지 않아요. 언제 어디서든 로그인해서 사용할 수 있어요.</div></div>
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-      <button class="guide-close" style="background:var(--muted);color:var(--bg);" onclick="document.getElementById('guideOverlay').classList.add('hidden')">닫기</button>
-      <button class="guide-close" onclick="dismissGuide()">다시 보지 않기</button>
+      <button class="guide-close" style="background:var(--muted);color:var(--bg);" onclick="dismissGuide(false)">닫기</button>
+      <button class="guide-close" onclick="dismissGuide(true)">다시 보지 않기</button>
     </div>
   </div>
 </div>
@@ -2421,9 +2421,12 @@ async function handleRosterImage(file){
 }
 
 // ── AUTH ──
-function dismissGuide(){
+function dismissGuide(permanent){
   document.getElementById('guideOverlay').classList.add('hidden');
-  if(currentUser) localStorage.setItem('guide_hidden_until_'+currentUser.id, Date.now()+86400000);
+  if(currentUser){
+    const until = permanent ? Date.now() + 86400000*365*10 : Date.now()+86400000;
+    localStorage.setItem('guide_hidden_until_'+currentUser.id, until);
+  }
 }
 function showAuthScreen(){ document.getElementById('guideOverlay').classList.add('hidden'); document.getElementById('authScreen').classList.add('show'); document.getElementById('root').style.display='none'; }
 function hideAuthScreen(){ document.getElementById('authScreen').classList.remove('show'); document.getElementById('root').style.display=''; }
